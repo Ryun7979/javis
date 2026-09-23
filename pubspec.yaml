@@ -54,6 +54,15 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
+
+# ic_launcher生成用の設定（`dart run flutter_launcher_icons`で android/app/src/main/res/mipmap-*
+# を再生成する。Androidタブレットキオスク専用アプリのためandroidのみ対象、非アダプティブ）。
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/icon/app_icon.png"
+
 flutter:
 
   # The following line ensures that the Material Icons font is
