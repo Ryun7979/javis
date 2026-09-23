@@ -5,8 +5,10 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../models/news_models.dart';
 import '../providers/dashboard_controller.dart';
+import '../screens/settings_screen.dart';
 
-/// ニュースフィード（ゲーム/AI/ITをタブ切り替え）。
+/// ニュースフィード（総合＋ゲーム/AI/ITをタブ切り替え）。
+/// RSSは設定された間隔（既定30分）で自動的に再取得され、随時更新される。
 class NewsFeed extends ConsumerStatefulWidget {
   const NewsFeed({super.key});
 
@@ -18,10 +20,12 @@ class _NewsFeedState extends ConsumerState<NewsFeed>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
 
+  int get _tabCount => NewsCategory.values.length + 1;
+
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: NewsCategory.values.length, vsync: this);
+    _tabController = TabController(length: _tabCount, vsync: this);
   }
 
   @override
@@ -33,23 +37,62 @@ class _NewsFeedState extends ConsumerState<NewsFeed>
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(dashboardControllerProvider);
+    final formatter = DateFormat('HH:mm');
 
     return Card(
       margin: const EdgeInsets.all(8),
       child: Column(
         children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            child: Row(
+              children: [
+                if (state.newsLastUpdated != null)
+                  Text(
+                    '最終更新 ${formatter.format(state.newsLastUpdated!)}',
+                    style: const TextStyle(fontSize: 11, color: Colors.white54),
+                  ),
+                const Spacer(),
+                IconButton(
+                  tooltip: '今すぐ更新',
+                  iconSize: 18,
+                  icon: const Icon(Icons.refresh),
+                  onPressed: () =>
+                      ref.read(dashboardControllerProvider.notifier).refreshNews(),
+                ),
+                IconButton(
+                  tooltip: '設定',
+                  iconSize: 18,
+                  icon: const Icon(Icons.settings),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                  ),
+                ),
+              ],
+            ),
+          ),
           TabBar(
             controller: _tabController,
-            tabs: [for (final c in NewsCategory.values) Tab(text: c.label)],
+            isScrollable: true,
+            tabs: [
+              const Tab(text: '総合'),
+              for (final c in NewsCategory.values) Tab(text: c.label),
+            ],
           ),
           Expanded(
             child: TabBarView(
               controller: _tabController,
               children: [
+                _NewsList(
+                  articles: state.allNewsSorted,
+                  error: null,
+                  showCategory: true,
+                ),
                 for (final category in NewsCategory.values)
                   _NewsList(
                     articles: state.newsByCategory[category] ?? const [],
                     error: state.newsErrors[category],
+                    showCategory: false,
                   ),
               ],
             ),
@@ -61,10 +104,15 @@ class _NewsFeedState extends ConsumerState<NewsFeed>
 }
 
 class _NewsList extends StatelessWidget {
-  const _NewsList({required this.articles, required this.error});
+  const _NewsList({
+    required this.articles,
+    required this.error,
+    required this.showCategory,
+  });
 
   final List<NewsArticle> articles;
   final String? error;
+  final bool showCategory;
 
   @override
   Widget build(BuildContext context) {
@@ -98,10 +146,21 @@ class _NewsList extends StatelessWidget {
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
-          subtitle: Text(
-            '${article.sourceName}'
-            '${article.publishedAt != null ? ' ・ ${formatter.format(article.publishedAt!)}' : ''}',
-            style: const TextStyle(fontSize: 11),
+          subtitle: Row(
+            children: [
+              if (showCategory) ...[
+                _CategoryChip(category: article.category),
+                const SizedBox(width: 6),
+              ],
+              Flexible(
+                child: Text(
+                  '${article.sourceName}'
+                  '${article.publishedAt != null ? ' ・ ${formatter.format(article.publishedAt!)}' : ''}',
+                  style: const TextStyle(fontSize: 11),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
           ),
           onTap: () => _openArticle(context, article.link),
         );
@@ -118,5 +177,32 @@ class _NewsList extends StatelessWidget {
         const SnackBar(content: Text('記事を開けませんでした')),
       );
     }
+  }
+}
+
+class _CategoryChip extends StatelessWidget {
+  const _CategoryChip({required this.category});
+
+  final NewsCategory category;
+
+  Color get _color => switch (category) {
+        NewsCategory.game => Colors.lightBlueAccent,
+        NewsCategory.ai => Colors.purpleAccent,
+        NewsCategory.it => Colors.greenAccent,
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+      decoration: BoxDecoration(
+        border: Border.all(color: _color.withValues(alpha: 0.7)),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        category.label,
+        style: TextStyle(fontSize: 10, color: _color),
+      ),
+    );
   }
 }

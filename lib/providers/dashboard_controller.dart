@@ -152,7 +152,7 @@ class DashboardController extends StateNotifier<DashboardState> {
     state = state.copyWith(
       newsByCategory: byCategory,
       newsErrors: errors,
-      lastUpdated: DateTime.now(),
+      newsLastUpdated: DateTime.now(),
     );
   }
 
