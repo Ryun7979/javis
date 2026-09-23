@@ -26,6 +26,7 @@ class WeatherData {
     required this.pressureHpa,
     required this.pressureHistory,
     required this.precipitationProbabilityPercent,
+    this.seaSurfaceTemperatureC,
   });
 
   final DateTime fetchedAt;
@@ -41,6 +42,10 @@ class WeatherData {
   final List<PressurePoint> pressureHistory;
   final int precipitationProbabilityPercent;
 
+  /// 海面水温（Open-Meteo Marine API）。内湾・河口部は衛星/モデル推定のため
+  /// 実際の釣り場の水温とズレることがあり、取得失敗時はnull（表示側で欄を省略）。
+  final double? seaSurfaceTemperatureC;
+
   Map<String, dynamic> toJson() => {
         'fetchedAt': fetchedAt.toIso8601String(),
         'temperatureC': temperatureC,
@@ -50,6 +55,7 @@ class WeatherData {
         'pressureHpa': pressureHpa,
         'pressureHistory': pressureHistory.map((e) => e.toJson()).toList(),
         'precipitationProbabilityPercent': precipitationProbabilityPercent,
+        'seaSurfaceTemperatureC': seaSurfaceTemperatureC,
       };
 
   factory WeatherData.fromJson(Map<String, dynamic> json) => WeatherData(
@@ -64,5 +70,7 @@ class WeatherData {
             .toList(),
         precipitationProbabilityPercent:
             json['precipitationProbabilityPercent'] as int,
+        seaSurfaceTemperatureC:
+            (json['seaSurfaceTemperatureC'] as num?)?.toDouble(),
       );
 }

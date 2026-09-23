@@ -88,6 +88,11 @@ class _WeatherRow extends StatelessWidget {
         Icon(info.icon, size: 16),
         Text(info.label, style: style),
         Text('${weather.temperatureC.toStringAsFixed(1)}℃', style: style),
+        if (weather.seaSurfaceTemperatureC != null)
+          Text(
+            '水温 ${weather.seaSurfaceTemperatureC!.toStringAsFixed(1)}℃',
+            style: style,
+          ),
         Text('降水 ${weather.precipitationProbabilityPercent}%', style: style),
         Text('風 ${weather.windSpeedMs.toStringAsFixed(1)}m/s', style: style),
         Text('気圧 ${weather.pressureHpa.toStringAsFixed(0)}hPa', style: style),

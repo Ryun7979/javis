@@ -137,6 +137,20 @@
   （`didUpdateWidget`で`stars`の変化を検知）。カード枠線は`main.dart`の`cardTheme`にネオンシアンの
   細いボーダーを一括設定するのみで、個々のウィジェット側は変更していない（控えめさの担保）。
 
+- **釣り情報カードに水温を追加済み（2026-09-23）。** Open-Meteo Marine API
+  （`https://marine-api.open-meteo.com/v1/marine`、`current=sea_surface_temperature`、
+  APIキー不要）を使用。既存の天気取得（`WeatherService`）と同じ緯度経度で呼び出し、
+  `WeatherData.seaSurfaceTemperatureC`（nullable）として統合した。取得失敗時は天気全体を
+  失敗させずnullのまま（UI側は水温欄を省略するだけ）。内湾・河口部は衛星/モデルベースの
+  外洋水温のため実際の釣り場水温とズレる可能性がある点をユーザーに説明済みで、許容の上で採用
+  （ユーザー承認済みの設計判断）。
+- **既存キャッシュのTTL内にモデルへ新フィールドを追加しても、実機で即座には反映確認できない。**
+  （2026-09-23、水温追加時に遭遇）`WeatherService`は15分TTLでHiveにJSONキャッシュしており、
+  新フィールド追加後に`adb install -r`しただけではアプリのHiveデータは保持されるため、
+  古いキャッシュ（水温フィールドなし→nullable復元でnull）がそのまま使われて「効いていないように
+  見える」。**確認方法**: `adb shell pm clear <applicationId>`でアプリデータを消してから再起動する
+  とキャッシュが飛んで新規取得が走り、正しく検証できる。
+
 ## Open Questions 要調整
 <!-- 未解決・保留・意図的にやらなかったこと。解決したら【解決済み】を付けて結論を残す -->
 

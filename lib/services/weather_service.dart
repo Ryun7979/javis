@@ -41,7 +41,9 @@ class WeatherService {
         throw WeatherServiceException('天気APIエラー: HTTP ${res.statusCode}');
       }
       final json = jsonDecode(res.body) as Map<String, dynamic>;
-      final weather = _parse(json);
+      final seaSurfaceTemperatureC =
+          await _fetchSeaSurfaceTemperature(latitude, longitude);
+      final weather = _parse(json, seaSurfaceTemperatureC);
       await _cache.writeJson(key, weather.toJson());
       return weather;
     } catch (e) {
@@ -52,7 +54,31 @@ class WeatherService {
     }
   }
 
-  WeatherData _parse(Map<String, dynamic> json) {
+  /// Open-Meteo Marine APIから海面水温を取得する。取得失敗（対象海域が
+  /// カバー範囲外、タイムアウト等）は天気全体を失敗させず、水温欄を
+  /// 省略するだけにするためnullを返す。
+  Future<double?> _fetchSeaSurfaceTemperature(
+    double latitude,
+    double longitude,
+  ) async {
+    try {
+      final uri = Uri.parse(
+        'https://marine-api.open-meteo.com/v1/marine'
+        '?latitude=$latitude&longitude=$longitude'
+        '&current=sea_surface_temperature&timezone=Asia%2FTokyo',
+      );
+      final res = await _client.get(uri).timeout(const Duration(seconds: 15));
+      if (res.statusCode != 200) return null;
+      final json = jsonDecode(res.body) as Map<String, dynamic>;
+      final current = json['current'] as Map<String, dynamic>?;
+      final value = current?['sea_surface_temperature'];
+      return (value as num?)?.toDouble();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  WeatherData _parse(Map<String, dynamic> json, double? seaSurfaceTemperatureC) {
     final current = json['current'] as Map<String, dynamic>;
     final hourly = json['hourly'] as Map<String, dynamic>;
     final times = (hourly['time'] as List).cast<String>();
@@ -94,6 +120,7 @@ class WeatherService {
       pressureHpa: (current['surface_pressure'] as num).toDouble(),
       pressureHistory: pressureHistory,
       precipitationProbabilityPercent: precipProb,
+      seaSurfaceTemperatureC: seaSurfaceTemperatureC,
     );
   }
 }
