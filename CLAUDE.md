@@ -10,8 +10,8 @@ Flutterプロジェクトはリポジトリ直下に作成する（`wall_jarvis`
 applicationId は `com.nadaryu.wall_jarvis`）。
 
 ## バージョン管理
-- 使用ツール: Git。リモートは未設定（ローカルのみ）。
-- 既定ブランチは `main`。個人開発のため機能ブランチは必須ではないが、大きめの変更は分けてよい。
+- 使用ツール: Git。リモート `origin`（GitHub, `https://github.com/Ryun7979/javis.git`）設定済み。
+- 既定ブランチは `master`。個人開発のため機能ブランチは必須ではないが、大きめの変更は分けてよい。
 - 無視対象: `build/`, `.dart_tool/`, `android/.gradle/`, `ios/Pods/` など（`.gitignore` に定義）。
 - **`docs/2026-09-23-仕様書.pdf` を動かさない・上書きしない。** 元の仕様書。要約や更新は別ファイル
   （`docs/` 配下に日付付きで新規作成）に書き、原本は残す。
@@ -24,7 +24,9 @@ applicationId は `com.nadaryu.wall_jarvis`）。
 - コミットメッセージは日本語で書く。何を変更したかだけでなく、なぜそうしたかを残す。
 - **コミット前に必ず `git status` で変更一覧を確認**し、`build/` などの生成物が混入していないことを
   確かめる。混入していたら `.gitignore` の不備を疑う。
-- 作業前に `git status` で最新状態を確認する（リモートなしのため pull は不要）。
+- 作業前に `git status` で最新状態を確認する。リモート `origin` が設定済みのため、他端末/GitHub上での
+  変更が疑われる場合は `git fetch` → `git status` で `origin/master` との差分の有無を確認する。
+- **プッシュもユーザーから明示的な指示があるまで行わないこと。** コミットの承認と同様、日本語で確認する。
 
 ## マルチセッション運用ルール
 - 個人開発の単独プロジェクトのため、基本は単一セッションで作業する。
@@ -36,13 +38,17 @@ applicationId は `com.nadaryu.wall_jarvis`）。
 - JDK: Temurin 17（winget導入）。
 - 実行確認: `flutter doctor -v` を通し、すべて✓になっていることを確認してから作業を始める。
 - 実機（Androidタブレット）を優先動作確認先とする。エミュレータを使う場合は
-  `flutter emulators --launch <id>` → `flutter run` の順。
+  `flutter emulators --launch <id>` でAVD（`wall_jarvis_tablet`）を起動する。
+- **非対話セッションでの動作確認は `flutter run` を使わない。** `flutter run` はターミナルに
+  アタッチしたまま待機し続けるため、進捗が見えず実質フリーズと区別がつかない。
+  `flutter build apk --debug` → `adb install -r` → `adb shell am start` → `adb logcat`
+  （FATAL EXCEPTION有無を確認）の順でビルド・起動・検証する。詳細はLEARNINGS.md参照。
 - **Windows側の書き換えはbashマウント経由だと最新に見えないことがある。** 疑わしければPowerShellで確認する
   （姉妹プロジェクトgocco-raceで実測済みの地雷）。
 
 ## 外部ツール連携（MCP 等）
-- 現時点でプロジェクト固有のMCPサーバ接続はなし。Android実機操作はADB経由（`flutter run`任せ）で足りる想定。
-  将来デバイス操作の自動化が必要になったら、この節に追記する。
+- 現時点でプロジェクト固有のMCPサーバ接続はなし。Android実機操作はADB経由（上記のbuild+adb方式）で
+  足りる想定。将来デバイス操作の自動化が必要になったら、この節に追記する。
 
 ## 実装方針
 **Flutterの標準的な構成で実装する方針。** 状態管理はRiverpod。バックグラウンド定期更新は
