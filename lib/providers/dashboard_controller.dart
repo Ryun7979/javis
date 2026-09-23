@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/legacy.dart';
 
 import '../models/app_settings.dart';
 import '../models/news_models.dart';
+import '../util/app_clock.dart';
 import 'core_providers.dart';
 import 'dashboard_state.dart';
 import 'settings_provider.dart';
@@ -73,7 +74,7 @@ class DashboardController extends StateNotifier<DashboardState> {
     try {
       final fetched = await tideService.getTideForDate(
         settings.location.jmaStationCode,
-        DateTime.now(),
+        appNow(settings.useFixedJst),
       );
       if (fetched == null) {
         tideError = 'この地点・日付の潮汐データが見つかりませんでした';
@@ -113,7 +114,7 @@ class DashboardController extends StateNotifier<DashboardState> {
       fishingScore: fishingScore,
       tideError: tideError,
       weatherError: weatherError,
-      lastUpdated: DateTime.now(),
+      lastUpdated: appNow(settings.useFixedJst),
     );
   }
 
@@ -152,7 +153,7 @@ class DashboardController extends StateNotifier<DashboardState> {
     state = state.copyWith(
       newsByCategory: byCategory,
       newsErrors: errors,
-      newsLastUpdated: DateTime.now(),
+      newsLastUpdated: appNow(settings.useFixedJst),
     );
   }
 

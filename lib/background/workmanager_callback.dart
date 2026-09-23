@@ -5,6 +5,7 @@ import '../services/cache_service.dart';
 import '../services/news_service.dart';
 import '../services/tide_service.dart';
 import '../services/weather_service.dart';
+import '../util/app_clock.dart';
 
 const String backgroundRefreshTaskName = 'wall_jarvis_background_refresh';
 const String backgroundRefreshUniqueName = 'wall_jarvis_background_refresh_periodic';
@@ -25,7 +26,7 @@ void backgroundCallbackDispatcher() {
 
       await tideService.getTideForDate(
         settings.location.jmaStationCode,
-        DateTime.now(),
+        appNow(settings.useFixedJst),
       );
       await weatherService.getWeather(
         settings.location.latitude,

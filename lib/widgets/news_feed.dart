@@ -5,7 +5,9 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../models/news_models.dart';
 import '../providers/dashboard_controller.dart';
+import '../providers/settings_provider.dart';
 import '../screens/settings_screen.dart';
+import '../util/app_clock.dart';
 
 /// ニュースフィード（総合＋ゲーム/AI/ITをタブ切り替え）。
 /// RSSは設定された間隔（既定30分）で自動的に再取得され、随時更新される。
@@ -37,6 +39,7 @@ class _NewsFeedState extends ConsumerState<NewsFeed>
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(dashboardControllerProvider);
+    final useFixedJst = ref.watch(settingsProvider).useFixedJst;
     final formatter = DateFormat('HH:mm');
 
     return Card(
@@ -87,12 +90,14 @@ class _NewsFeedState extends ConsumerState<NewsFeed>
                   articles: state.allNewsSorted,
                   error: null,
                   showCategory: true,
+                  useFixedJst: useFixedJst,
                 ),
                 for (final category in NewsCategory.values)
                   _NewsList(
                     articles: state.newsByCategory[category] ?? const [],
                     error: state.newsErrors[category],
                     showCategory: false,
+                    useFixedJst: useFixedJst,
                   ),
               ],
             ),
@@ -108,11 +113,13 @@ class _NewsList extends StatelessWidget {
     required this.articles,
     required this.error,
     required this.showCategory,
+    required this.useFixedJst,
   });
 
   final List<NewsArticle> articles;
   final String? error;
   final bool showCategory;
+  final bool useFixedJst;
 
   @override
   Widget build(BuildContext context) {
@@ -155,7 +162,7 @@ class _NewsList extends StatelessWidget {
               Flexible(
                 child: Text(
                   '${article.sourceName}'
-                  '${article.publishedAt != null ? ' ・ ${formatter.format(article.publishedAt!)}' : ''}',
+                  '${article.publishedAt != null ? ' ・ ${formatter.format(appLocalize(article.publishedAt!, useFixedJst))}' : ''}',
                   style: const TextStyle(fontSize: 11),
                   overflow: TextOverflow.ellipsis,
                 ),

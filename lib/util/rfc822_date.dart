@@ -42,7 +42,7 @@ DateTime? parseRfc822Date(String input) {
     offsetMinutes = sign * (hh * 60 + mm);
   }
 
-  final utcTime = DateTime.utc(year, month, day, hour, minute, second)
+  // 絶対時刻(UTC)のまま返す。表示用のタイムゾーン変換は呼び出し側(app_clock.dart)で行う。
+  return DateTime.utc(year, month, day, hour, minute, second)
       .subtract(Duration(minutes: offsetMinutes));
-  return utcTime.toLocal();
 }

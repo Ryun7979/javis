@@ -52,6 +52,15 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 24),
+          Text('タイムゾーン', style: Theme.of(context).textTheme.titleMedium),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('常に日本標準時(JST)を使う'),
+            subtitle: const Text('端末のタイムゾーン設定によらず、時計・更新時刻・潮汐の日付判定を日本時間に固定します'),
+            value: settings.useFixedJst,
+            onChanged: (v) => notifier.update(settings.copyWith(useFixedJst: v)),
+          ),
+          const SizedBox(height: 24),
           Row(
             children: [
               Text('ニュース配信元', style: Theme.of(context).textTheme.titleMedium),

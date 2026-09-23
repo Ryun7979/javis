@@ -9,6 +9,7 @@ class AppSettings {
     required this.tideWeatherUpdateIntervalMinutes,
     required this.newsUpdateIntervalMinutes,
     required this.newsSources,
+    required this.useFixedJst,
   });
 
   final LocationPoint location;
@@ -21,11 +22,16 @@ class AppSettings {
 
   final List<NewsSource> newsSources;
 
+  /// true の場合、端末のシステムタイムゾーン設定によらず常に日本標準時(UTC+9)を
+  /// 基準に時計表示・日付境界判定を行う（キオスク端末のTZ誤設定対策）。
+  final bool useFixedJst;
+
   static AppSettings defaults() => AppSettings(
         location: observationPoints.first,
         tideWeatherUpdateIntervalMinutes: 30,
         newsUpdateIntervalMinutes: 30,
         newsSources: defaultNewsSources,
+        useFixedJst: true,
       );
 
   AppSettings copyWith({
@@ -33,6 +39,7 @@ class AppSettings {
     int? tideWeatherUpdateIntervalMinutes,
     int? newsUpdateIntervalMinutes,
     List<NewsSource>? newsSources,
+    bool? useFixedJst,
   }) =>
       AppSettings(
         location: location ?? this.location,
@@ -41,6 +48,7 @@ class AppSettings {
         newsUpdateIntervalMinutes:
             newsUpdateIntervalMinutes ?? this.newsUpdateIntervalMinutes,
         newsSources: newsSources ?? this.newsSources,
+        useFixedJst: useFixedJst ?? this.useFixedJst,
       );
 
   Map<String, dynamic> toJson() => {
@@ -48,6 +56,7 @@ class AppSettings {
         'tideWeatherUpdateIntervalMinutes': tideWeatherUpdateIntervalMinutes,
         'newsUpdateIntervalMinutes': newsUpdateIntervalMinutes,
         'newsSources': newsSources.map((e) => e.toJson()).toList(),
+        'useFixedJst': useFixedJst,
       };
 
   factory AppSettings.fromJson(Map<String, dynamic> json) => AppSettings(
@@ -59,5 +68,7 @@ class AppSettings {
         newsSources: (json['newsSources'] as List)
             .map((e) => NewsSource.fromJson(e as Map<String, dynamic>))
             .toList(),
+        // 既存キャッシュ（フィールド追加前）との後方互換のため未設定時はtrue扱い。
+        useFixedJst: json['useFixedJst'] as bool? ?? true,
       );
 }
