@@ -18,7 +18,7 @@ class _CyberpunkBackgroundState extends State<CyberpunkBackground>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
-    duration: const Duration(seconds: 12),
+    duration: const Duration(seconds: 6),
   )..repeat();
 
   @override
@@ -70,7 +70,7 @@ class _CyberpunkPainter extends CustomPainter {
 
   void _paintGrid(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = CyberpunkColors.neonCyan.withValues(alpha: 0.045)
+      ..color = CyberpunkColors.neonCyan.withValues(alpha: 0.08)
       ..strokeWidth = 1;
     for (double x = 0; x <= size.width; x += _gridStep) {
       canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
@@ -81,7 +81,7 @@ class _CyberpunkPainter extends CustomPainter {
   }
 
   void _paintScanline(Canvas canvas, Size size) {
-    final bandHeight = size.height * 0.18;
+    final bandHeight = size.height * 0.22;
     final y = progress * (size.height + bandHeight) - bandHeight;
     final rect = Rect.fromLTWH(0, y, size.width, bandHeight);
     final paint = Paint()
@@ -90,11 +90,22 @@ class _CyberpunkPainter extends CustomPainter {
         end: Alignment.bottomCenter,
         colors: [
           CyberpunkColors.neonCyan.withValues(alpha: 0),
-          CyberpunkColors.neonCyan.withValues(alpha: 0.06),
+          CyberpunkColors.neonCyan.withValues(alpha: 0.16),
+          CyberpunkColors.neonCyan.withValues(alpha: 0.22),
+          CyberpunkColors.neonCyan.withValues(alpha: 0.16),
           CyberpunkColors.neonCyan.withValues(alpha: 0),
         ],
+        stops: const [0, 0.3, 0.5, 0.7, 1],
       ).createShader(rect);
     canvas.drawRect(rect, paint);
+
+    // 帯の中心に、走査の先端らしい明線をうっすら重ねる（目立ちすぎないようぼかす）。
+    final coreY = y + bandHeight / 2;
+    final corePaint = Paint()
+      ..color = CyberpunkColors.neonCyan.withValues(alpha: 0.25)
+      ..strokeWidth = 1.5
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
+    canvas.drawLine(Offset(0, coreY), Offset(size.width, coreY), corePaint);
   }
 
   @override

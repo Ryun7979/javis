@@ -14,11 +14,14 @@ void main() {
     );
     await tester.pump();
 
-    final timeFinder = find.byWidgetPredicate(
-      (widget) =>
-          widget is Text &&
-          RegExp(r'^\d{2}:\d{2}$').hasMatch(widget.data ?? ''),
+    // 時計は「:」の点滅アニメーションのため時・コロン・分が別々のTextに分かれている。
+    final hourFinder = find.byWidgetPredicate(
+      (widget) => widget is Text && RegExp(r'^\d{2}$').hasMatch(widget.data ?? ''),
     );
-    expect(timeFinder, findsOneWidget);
+    final colonFinder = find.byWidgetPredicate(
+      (widget) => widget is Text && widget.data == ':',
+    );
+    expect(hourFinder, findsNWidgets(2));
+    expect(colonFinder, findsOneWidget);
   });
 }

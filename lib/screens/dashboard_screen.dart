@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/dashboard_controller.dart';
+import '../theme/cyberpunk_colors.dart';
 import '../widgets/clock_widget.dart';
 import '../widgets/cyberpunk_background.dart';
 import '../widgets/fishing_card.dart';
+import '../widgets/neon_pulse_frame.dart';
 import '../widgets/news_feed.dart';
 import '../widgets/update_flash_overlay.dart';
 
@@ -57,9 +59,12 @@ class DashboardScreen extends ConsumerWidget {
                     ),
                     Expanded(
                       flex: 2,
-                      child: UpdateFlashOverlay(
-                        updateKey: state.lastUpdated,
-                        child: const FishingCard(),
+                      child: NeonPulseFrame(
+                        color: CyberpunkColors.neonCyan,
+                        child: UpdateFlashOverlay(
+                          updateKey: state.lastUpdated,
+                          child: const FishingCard(),
+                        ),
                       ),
                     ),
                   ],
@@ -67,9 +72,12 @@ class DashboardScreen extends ConsumerWidget {
               ),
               Expanded(
                 flex: 5,
-                child: UpdateFlashOverlay(
-                  updateKey: state.newsLastUpdated,
-                  child: const NewsFeed(),
+                child: NeonPulseFrame(
+                  color: CyberpunkColors.neonMagenta,
+                  child: UpdateFlashOverlay(
+                    updateKey: state.newsLastUpdated,
+                    child: const NewsFeed(),
+                  ),
                 ),
               ),
             ],
