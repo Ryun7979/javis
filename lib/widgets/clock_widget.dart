@@ -18,24 +18,33 @@ class ClockWidget extends ConsumerWidget {
     final weekday = _weekdayLabels[now.weekday - 1];
 
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            timeText,
-            style: const TextStyle(
-              fontSize: 96,
-              fontWeight: FontWeight.w800,
-              fontFeatures: [FontFeature.tabularFigures()],
-              height: 1.0,
-            ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: FittedBox(
+          fit: BoxFit.contain,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                timeText,
+                style: const TextStyle(
+                  fontSize: 160,
+                  fontWeight: FontWeight.w800,
+                  fontFeatures: [FontFeature.tabularFigures()],
+                  height: 1.0,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                '$dateText（$weekday）',
+                style: const TextStyle(
+                  fontSize: 40,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 16),
-          Text(
-            '$dateText（$weekday）',
-            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w400),
-          ),
-        ],
+        ),
       ),
     );
   }

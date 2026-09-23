@@ -20,38 +20,42 @@ class FishingCard extends ConsumerWidget {
     final location = ref.watch(settingsProvider).location;
 
     return Card(
-      margin: const EdgeInsets.all(8),
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Icon(Icons.location_on, size: 18, color: Colors.white70),
+                const Icon(Icons.location_on, size: 14, color: Colors.white70),
                 const SizedBox(width: 4),
                 Text(
                   location.name,
-                  style: Theme.of(context).textTheme.titleMedium,
+                  style: Theme.of(context).textTheme.titleSmall,
                 ),
-                const Spacer(),
+                const SizedBox(width: 12),
+                if (state.weather != null)
+                  Expanded(child: _WeatherRow(weather: state.weather!)),
+                if (state.weatherError != null && state.weather == null)
+                  Expanded(
+                    child: _ErrorLine(message: '天気: ${state.weatherError}'),
+                  ),
                 if (state.fishingScore != null)
                   FishingScoreBadge(score: state.fishingScore!),
               ],
             ),
-            const Divider(),
-            if (state.weather != null) _WeatherRow(weather: state.weather!),
-            if (state.weatherError != null && state.weather == null)
-              _ErrorLine(message: '天気: ${state.weatherError}'),
-            const SizedBox(height: 8),
             Expanded(
               child: state.tide != null
                   ? Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '潮汐グラフ（${state.tide!.tidePhaseName}）',
-                          style: Theme.of(context).textTheme.titleSmall,
+                          '潮汐（${state.tide!.tidePhaseName}）',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Colors.white70,
+                          ),
                         ),
                         Expanded(child: TideChart(tide: state.tide!)),
                         _TideExtremesRow(tide: state.tide!),
@@ -75,19 +79,18 @@ class _WeatherRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final info = describeWeatherCode(weather.weatherCode);
-    return Row(
+    const style = TextStyle(fontSize: 12);
+    return Wrap(
+      spacing: 10,
+      runSpacing: 2,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        Icon(info.icon, size: 28),
-        const SizedBox(width: 8),
-        Text(info.label, style: const TextStyle(fontSize: 16)),
-        const SizedBox(width: 16),
-        Text('${weather.temperatureC.toStringAsFixed(1)}℃'),
-        const SizedBox(width: 16),
-        Text('降水確率 ${weather.precipitationProbabilityPercent}%'),
-        const SizedBox(width: 16),
-        Text('風 ${weather.windSpeedMs.toStringAsFixed(1)}m/s'),
-        const SizedBox(width: 16),
-        Text('気圧 ${weather.pressureHpa.toStringAsFixed(0)}hPa'),
+        Icon(info.icon, size: 16),
+        Text(info.label, style: style),
+        Text('${weather.temperatureC.toStringAsFixed(1)}℃', style: style),
+        Text('降水 ${weather.precipitationProbabilityPercent}%', style: style),
+        Text('風 ${weather.windSpeedMs.toStringAsFixed(1)}m/s', style: style),
+        Text('気圧 ${weather.pressureHpa.toStringAsFixed(0)}hPa', style: style),
       ],
     );
   }
@@ -100,17 +103,18 @@ class _TideExtremesRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (tide.extremes.isEmpty) {
-      return const Text('満潮/干潮データなし', style: TextStyle(fontSize: 12));
+      return const Text('満潮/干潮データなし', style: TextStyle(fontSize: 11));
     }
     final formatter = DateFormat('HH:mm');
     return Wrap(
-      spacing: 12,
+      spacing: 10,
+      runSpacing: 0,
       children: [
         for (final e in tide.extremes)
           Text(
             '${e.isHigh ? '満潮' : '干潮'} ${formatter.format(e.time)} (${e.levelCm}cm)',
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 11,
               color: e.isHigh ? Colors.orangeAccent : Colors.lightBlueAccent,
             ),
           ),
