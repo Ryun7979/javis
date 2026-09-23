@@ -36,7 +36,8 @@ class ClockWidget extends ConsumerWidget {
               ),
               const SizedBox(height: 20),
               Text(
-                '$dateText（$weekday）',
+                '$dateText($weekday)',
+                textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 40,
                   fontWeight: FontWeight.w400,
