@@ -1,4 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 潮汐/天気/ニュースAPIへのHTTP通信に必要 -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- 画面常時点灯（wakelock_plus）に必要 -->
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
     <application
         android:label="wall_jarvis"
         android:name="${applicationName}"
@@ -40,6 +44,11 @@
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <!-- url_launcherでニュース記事を外部ブラウザで開くために必要（Android 11+のパッケージ可視性対応） -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="https"/>
         </intent>
     </queries>
 </manifest>

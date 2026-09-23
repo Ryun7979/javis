@@ -15,6 +15,26 @@
   `https://api.adoptium.net/v3/binary/latest/<version>/ga/windows/x64/jdk/hotspot/normal/eclipse`
   をcurlで取得しZip展開するだけで動く（`C:\src\jdk17`）。`JAVA_HOME`をユーザー環境変数に設定すれば
   `flutter doctor`が正しく検出する。
+- **外部APIの固定長テキスト形式は、WebFetchの要約結果を信用せず`curl`で生データを取得し`cut -c`で
+  桁位置を実測してから実装する。** 気象庁の潮位表テキスト（`data.jma.go.jp/kaiyou/data/db/tide/suisan/txt/`）
+  はWebFetchの要約だと空白の桁数が崩れて誤読した（年が4桁に見えるなど）。生バイトを`cat -A`や`cut -c`で
+  確認し、既知の極大/極小（満潮/干潮）の時刻・潮位と突き合わせて初めて正しいフォーマット
+  （毎時潮位24×3桁＋年2桁＋月2桁＋日2桁＋地点2桁＋満潮4件×7桁＋干潮4件×7桁）を確定できた。
+- **Riverpodでコード生成（riverpod_generator/hive_generator）が必要な機能は避け、legacy APIや
+  手書きJSONシリアライズで済ませるとWindowsの「開発者モード」要求（symlink作成）を回避できる。**
+  `build_runner`はWindowsでシンボリックリンク作成権限を要求し、開発者モード有効化はシステム設定変更に
+  当たるため避けたい。`package:flutter_riverpod/legacy.dart`の`StateNotifierProvider`は
+  コード生成なしで使える。Hiveも`hive_generator`のTypeAdapterではなく`jsonEncode`した文字列を
+  `Box<String>`に保存する方式にすれば同様に回避できる。
+- **Android実機/エミュレータでの動作確認は`flutter run`ではなく`flutter build apk` +
+  `adb install -r` + `adb shell am start` + `adb logcat`のワンショット方式にする。**
+  `flutter run`はターミナルにアタッチしたまま待機するプロセスのため、`run_in_background`で起動すると
+  出力がバッファされず進捗が全く見えず、実質フリーズと区別がつかない。ビルド成果物を明示的に
+  インストール・起動し、`dumpsys activity | grep mResumedActivity`や`logcat`のFATAL EXCEPTIONの
+  有無で機械的に完了判定する方が非対話セッションに向く。
+- **エミュレータのスクリーンショットは`adb exec-out screencap -p > file.png`をPowerShellの`>`で
+  リダイレクトするとPNGヘッダが壊れる（BOM混入）。** `adb shell screencap -p /sdcard/x.png` →
+  `adb pull /sdcard/x.png <ローカルパス>`の二段階にすると壊れず確実に読める。
 
 ## Mistakes to Avoid 失敗と再発防止
 <!-- 実際に踏んだ失敗と、次回の回避手順。重大なものは【重大】を先頭に付ける -->
@@ -40,16 +60,34 @@
   （applicationId: `com.nadaryu.wall_jarvis`）。名前変更は生成物を全削除してから`flutter create`を
   再実行する方式で対応した（コミット前だったので安全に一括作り直しができた）。
   `flutter analyze`・`flutter test`とも初期状態でPASS。まだ実機/エミュレータでの起動確認はしていない。
+- **釣り・ニュース・時計ダッシュボード本体を実装済み（2026-09-23）。** 潮汐は気象庁の潮位表テキスト
+  （観測地点コードは横浜=`QS`。似た名前の`YK`=京浜港は別地点なので混同注意、
+  `lib/data/observation_points.dart`に地点一覧）、天気はOpen-Meteo（APIキー不要）、ニュースはRSS
+  （既定: 4Gamer.net/ITmedia AI+/ITmedia NEWS）。状態管理はRiverpod（`legacy.dart`の
+  StateNotifierProvider）、キャッシュはHive（JSON文字列保存、TypeAdapter不使用）、画面常時点灯は
+  wakelock_plus、バックグラウンド補助更新にworkmanager。実機的な検証は
+  Androidエミュレータで`flutter build apk --debug`→`adb install`→起動確認まで実施し、時計・潮汐グラフ・
+  天気・釣りやすさスコア（★表示＋内訳）・ニュース3タブ・設定画面すべてスクリーンショットで動作確認済み。
+  「Lock Task Mode」（true kiosk化）はDevice Owner登録が要るため未実装（Open Questions参照）。
+- **ITmediaのRSS利用規約は「アプリへの組み込みは個別相談」と明記されている。** 現状は個人利用の
+  卓上キオスクアプリ（非公開・非配布）としてタイトル/配信元/時刻のみ表示し本文非複製の範囲で実装したが、
+  もし将来配布・公開する場合は改めてITmediaに確認したほうがよい。
 
 ## Open Questions 要調整
 <!-- 未解決・保留・意図的にやらなかったこと。解決したら【解決済み】を付けて結論を残す -->
 
 - 【解決済み】org/パッケージ名: ユーザー指定で`com.nadaryu.wall_jarvis`（プロジェクト名`wall_jarvis`）に確定
   （2026-09-23）。当初の仮称`fishing_dashboard`から変更済み。
-- 仕様書の「未確定事項・次のステップ」がそのまま未着手: 対象釣り場の緯度経度、ニュースRSS/APIソースの選定
-  （利用規約・商用可否含む）、潮汐データの取得元、画面デザインのワイヤーフレーム、対象タブレット機種。
+- 【解決済み】対象釣り場・潮汐/天気/ニュースのデータソース選定（2026-09-23）。横浜（気象庁観測地点QS）、
+  気象庁+Open-Meteo、RSS（4Gamer.net/ITmedia AI+/ITmedia NEWS）で実装済み。設定画面から地点・
+  ニュース配信元は変更可能。詳細は Domain Knowledge 参照。
 - Windows Desktop向けビルド用のVisual Studio C++コンポーネントは未導入（`flutter doctor`で警告）。
   Android優先のため後回しにした。デスクトップ版も出す判断になったら導入する。
+- Android Lock Task Mode（画面ピン留め・誤操作防止の本格キオスク化）は未実装。Device Owner登録
+  （`dpm set-device-owner`、通常は端末初期セットアップ時のみ可能）が前提になるため、対象タブレット確定後に
+  改めて着手要否を判断する。現状は全画面表示＋wakelock_plusによる常時点灯のみ対応。
+- ニュースの自動スクロール/切り替え表示オプション（仕様書「検討」扱い）は未実装。タブ切り替え＋
+  縦スクロールリストのみ。常時無人稼働時に定期スクロールが欲しくなったら追加検討。
 - 【解決済み】Android実機またはエミュレータでの`flutter run`確認（2026-09-23）。PC上のAndroidエミュレータで
   `wall_jarvis`（初期状態のカウンターアプリ）の起動を確認済み。詳細は Domain Knowledge 参照。
 

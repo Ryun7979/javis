@@ -1,6 +1,8 @@
 # Flutter/Dart のビルド生成物・キャッシュ
 .dart_tool/
 .flutter-plugin-versions
+.flutter-plugins
+.flutter-plugins-dependencies
 .packages
 .pub-cache/
 .pub/
