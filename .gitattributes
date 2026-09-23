@@ -1,0 +1,14 @@
+# 改行コード変換を一切行わない
+* -text
+
+# バイナリは差分・マージを試みない
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.ttf binary
+*.otf binary
+*.keystore binary
+*.jks binary
