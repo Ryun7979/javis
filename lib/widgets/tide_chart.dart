@@ -2,6 +2,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
 import '../models/tide_data.dart';
+import '../theme/cyberpunk_colors.dart';
 
 /// 潮汐グラフ（毎時潮位の折れ線＋満潮/干潮のマーカー）。
 class TideChart extends StatelessWidget {
@@ -24,7 +25,18 @@ class TideChart extends StatelessWidget {
     final minY = levels.reduce((a, b) => a < b ? a : b) - 10;
     final maxY = levels.reduce((a, b) => a > b ? a : b) + 10;
 
-    final color = Theme.of(context).colorScheme.primary;
+    final color = CyberpunkColors.neonCyan;
+
+    // 折れ線の山・谷（満潮/干潮に近い極値）を発光マーカーで示す。
+    final peakIndices = <int>{};
+    for (var i = 1; i < spots.length - 1; i++) {
+      final prev = spots[i - 1].y;
+      final curr = spots[i].y;
+      final next = spots[i + 1].y;
+      if ((curr > prev && curr > next) || (curr < prev && curr < next)) {
+        peakIndices.add(i);
+      }
+    }
 
     return LineChart(
       LineChartData(
@@ -65,7 +77,20 @@ class TideChart extends StatelessWidget {
             isCurved: true,
             color: color,
             barWidth: 3,
-            dotData: const FlDotData(show: false),
+            shadow: Shadow(color: color.withValues(alpha: 0.7), blurRadius: 10),
+            dotData: FlDotData(
+              show: true,
+              checkToShowDot: (spot, barData) {
+                final index = spots.indexOf(spot);
+                return peakIndices.contains(index);
+              },
+              getDotPainter: (spot, percent, bar, index) => FlDotCirclePainter(
+                radius: 4,
+                color: CyberpunkColors.neonMagenta,
+                strokeWidth: 4,
+                strokeColor: CyberpunkColors.neonMagenta.withValues(alpha: 0.3),
+              ),
+            ),
             belowBarData: BarAreaData(show: true, color: color.withValues(alpha: 0.15)),
           ),
         ],
@@ -89,6 +114,9 @@ class TideChart extends StatelessWidget {
           ],
         ),
       ),
+      // データ更新（潮汐の再取得）のたびに折れ線がなめらかに描き直される。
+      duration: const Duration(milliseconds: 900),
+      curve: Curves.easeInOutCubic,
     );
   }
 }

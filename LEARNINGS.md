@@ -58,6 +58,16 @@
   （2026-09-23）`toIso8601String()`でキャッシュに保存→`DateTime.parse()`で復元する際、UTC/local
   どちらのDateTimeで保存したかによって復元後の扱いが変わる。絶対時刻はUTCで一貫させ、表示側だけで
   ローカライズする設計にすると迷わない。
+- **新しいPowerShellセッションはユーザー環境変数（`JAVA_HOME`/`ANDROID_HOME`等）を自動で
+  引き継がないことがある。**（2026-09-23）`flutter doctor`は通っていたのに`flutter build apk`が
+  「JAVA_HOME is not set」で失敗した。`[Environment]::GetEnvironmentVariable("JAVA_HOME","User")`で
+  ユーザー環境変数自体は設定済みと確認できたので、`$env:JAVA_HOME = [Environment]::GetEnvironmentVariable(...)`
+  のように該当プロセスへ明示的に読み込んでからビルドコマンドを実行すると解決した。非対話セッションで
+  ビルドが環境変数絡みで失敗したら、まずこれを疑う。
+- **fl_chartの`LineChart`は`ImplicitlyAnimatedWidget`で、位置引数`data`の後に`duration`/`curve`を
+  名前付き引数で渡せる（`LineChart(LineChartData(...), duration: ..., curve: ...)`）。**
+  データ（`spots`等）が変わると自動でなめらかに補間アニメーションする。Dartの構文上、位置引数を
+  名前付き引数より先に書く必要がある点に注意（逆順だとコンパイルエラー）。
 - **`adb shell am force-stop`直後の`am start`でも、直前のセッションのUI状態（別画面や別アプリ）が
   スクリーンショットに映り込むことがある。** 原因未特定だが、`force-stop`は対象アプリだけでなく
   テスト中に開いた関連アプリ（例: url_launcherで開いたChrome）も一緒に`force-stop`してから
@@ -114,6 +124,18 @@
 - **ニュースの自動更新は`DashboardController`の`Timer.periodic`（既定30分、設定画面で変更可）で
   実装済みで動いている。** 潮汐/天気と別のタイマーで独立して回している。動作確認は画面右上の
   「最終更新」表示と手動更新ボタン（リロードアイコン）で目視できる。
+- **サイバーパンク装飾を追加済み（2026-09-23）。** ユーザーから「メインコンテンツ（フォント・枠）は
+  控えめ、グラフや更新演出は派手めに」という指定があり、それに沿って役割分担した。配色定数は
+  `lib/theme/cyberpunk_colors.dart`に集約。背景のネオングリッド＋走査線は`CyberpunkBackground`
+  （`lib/widgets/cyberpunk_background.dart`、低輝度アニメーションで焼き付き対策も兼ねる）。
+  データ更新時に対象カードへ一瞬ネオンの光る枠を重ねる演出は`UpdateFlashOverlay`
+  （`lib/widgets/update_flash_overlay.dart`、`updateKey`に`lastUpdated`等のタイムスタンプを渡すと
+  変化時のみ発火）で、`FishingCard`・`NewsFeed`に適用。潮汐グラフ（`tide_chart.dart`）は線に
+  `shadow`でグローを付け、山/谷（満潮/干潮に近い極値）にマゼンタの発光マーカーを表示し、
+  `LineChart`標準の`duration`/`curve`でデータ更新時になめらかに描き直る。釣りやすさ★バッジ
+  （`fishing_score_badge.dart`）はスター数が変化した時だけ左から順に光りながらポップインする
+  （`didUpdateWidget`で`stars`の変化を検知）。カード枠線は`main.dart`の`cardTheme`にネオンシアンの
+  細いボーダーを一括設定するのみで、個々のウィジェット側は変更していない（控えめさの担保）。
 
 ## Open Questions 要調整
 <!-- 未解決・保留・意図的にやらなかったこと。解決したら【解決済み】を付けて結論を残す -->

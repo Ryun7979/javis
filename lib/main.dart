@@ -8,6 +8,7 @@ import 'background/workmanager_callback.dart';
 import 'providers/core_providers.dart';
 import 'screens/dashboard_screen.dart';
 import 'services/cache_service.dart';
+import 'theme/cyberpunk_colors.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -68,20 +69,28 @@ class WallJarvisApp extends StatelessWidget {
   ThemeData _buildDarkTheme() {
     // 常時点灯運用のため焼き付き・消費電力対策と夜間の視認性を優先し、
     // ダークテーマを基調とする（仕様書「画面構成・UI仕様」）。
+    // サイバーパンク装飾の一環でアクセントカラーをネオンシアンに変更しているが、
+    // 本文テキストの可読性を優先し、カードの枠線は細く控えめにとどめている。
     final base = ThemeData(
       brightness: Brightness.dark,
       colorScheme: ColorScheme.fromSeed(
-        seedColor: Colors.teal,
+        seedColor: CyberpunkColors.neonCyan,
         brightness: Brightness.dark,
       ),
       useMaterial3: true,
       fontFamily: 'sans-serif',
     );
     return base.copyWith(
-      scaffoldBackgroundColor: Colors.black,
+      scaffoldBackgroundColor: CyberpunkColors.bgDeep,
       cardTheme: base.cardTheme.copyWith(
-        color: const Color(0xFF121212),
+        color: CyberpunkColors.bgPanel,
         margin: const EdgeInsets.all(8),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(
+            color: CyberpunkColors.neonCyan.withValues(alpha: 0.28),
+          ),
+        ),
       ),
     );
   }
