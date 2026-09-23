@@ -50,7 +50,26 @@
   （利用規約・商用可否含む）、潮汐データの取得元、画面デザインのワイヤーフレーム、対象タブレット機種。
 - Windows Desktop向けビルド用のVisual Studio C++コンポーネントは未導入（`flutter doctor`で警告）。
   Android優先のため後回しにした。デスクトップ版も出す判断になったら導入する。
-- Android実機またはエミュレータでの`flutter run`はまだ未実施。次回セッションで確認する。
+- 【解決済み】Android実機またはエミュレータでの`flutter run`確認（2026-09-23）。PC上のAndroidエミュレータで
+  `wall_jarvis`（初期状態のカウンターアプリ）の起動を確認済み。詳細は Domain Knowledge 参照。
+
+## PCエミュレータ環境（2026-09-23構築）
+
+- **導入パッケージ**: `emulator`（37.1.11）、`system-images;android-36;google_apis;x86_64`（API 37.1向けの
+  エミュレータ用システムイメージは本日時点で未配布のため、次点の android-36 を採用）。
+  `sdkmanager <pkg1> <pkg2>` にYes応答をパイプすれば非対話でインストールできる（既存パターンの応用）。
+- **AVD**: 名前`wall_jarvis_tablet`、デバイスプロファイル`pixel_tablet`（卓上キオスクのタブレット用途に近い）。
+  `avdmanager create avd -n <name> -k <system-image> -d pixel_tablet` で作成。
+  実行時に`Could not load devices from ...\system-images\...\devices.xml`という警告が出るが無害
+  （`avdmanager list avd`で正常に一覧に出る）。次回同じ警告が出ても慌てず一覧で確認すればよい。
+- **アクセラレーション**: Windows Hypervisor Platform (WHPX) が有効で`emulator -accel-check`もOK。
+  追加設定不要だった。
+- **起動確認**: `emulator -avd wall_jarvis_tablet` → `adb shell getprop sys.boot_completed`が`1`になるまで
+  待てば起動完了が機械的に判定できる。その後`flutter run -d emulator-5554`でビルド→インストール→起動まで成功、
+  `flutter analyze`/`flutter test`もPASSのまま（初回Gradleビルドは約5分、Android SDK Build-Tools 36と
+  Platform 36の追加ダウンロードが自動発生した）。
+- **次回のエミュレータ起動**: SDK類は導入済みなので、`emulator -avd wall_jarvis_tablet`だけで起動できる
+  （PATHに`%LOCALAPPDATA%\Android\sdk\emulator`を通しておくと`emulator`コマンドが直接使える）。
 
 ## Consolidated Principles 統合した原則
 <!-- 個別事例から抽出した、広く通用する判断基準 -->
