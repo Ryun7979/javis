@@ -68,6 +68,17 @@
   名前付き引数で渡せる（`LineChart(LineChartData(...), duration: ..., curve: ...)`）。**
   データ（`spots`等）が変わると自動でなめらかに補間アニメーションする。Dartの構文上、位置引数を
   名前付き引数より先に書く必要がある点に注意（逆順だとコンパイルエラー）。
+- **webp画像をPNGに変換したいとき、Windowsに変換ツール（ImageMagick/ffmpeg/Pillow）が無くても、
+  Flutter同梱のDart SDK（`C:\src\flutter\bin\dart`）と`package:image`だけで足りる。**（2026-09-24、
+  アプリアイコン更新時）System.Drawingの`Image.FromFile`はwebpを読めず「Out of Memory」という
+  紛らわしいエラーになる。スクラッチディレクトリに最小限の`pubspec.yaml`（`image: ^4.5.4`のみ依存）と
+  `bin/main.dart`（`img.decodeWebP(bytes)` → `img.encodePng(image)`）を置き`dart pub get` →
+  `dart run bin/main.dart <in.webp> <out.png>`で変換できる。追加のシステムインストール不要。
+- **GitBash(MSYS)から`adb`でリモートパス（`/sdcard/...`）を扱うと、パスがWindows形式に誤変換されて
+  失敗することがある。**（2026-09-24）`MSYS_NO_PATHCONV=1`で全体を無効化すると今度はローカル側の
+  保存先パスまで変換されず失敗する。**対処**: リモートパス側だけ`//sdcard/...`のように先頭を`//`にすると
+  MSYSのパス変換を素通りできる（ローカル側の変換は有効なまま）。`adb pull //sdcard/x.png <ローカルパス>`
+  の形が最も安定した。
 - **`adb shell am force-stop`直後の`am start`でも、直前のセッションのUI状態（別画面や別アプリ）が
   スクリーンショットに映り込むことがある。** 原因未特定だが、`force-stop`は対象アプリだけでなく
   テスト中に開いた関連アプリ（例: url_launcherで開いたChrome）も一緒に`force-stop`してから
