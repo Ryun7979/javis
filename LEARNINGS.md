@@ -214,3 +214,22 @@
 - **ユーザーの観察と自分の静的解析が食い違ったら、観察が正しい。**
 - **「〜のままだから大丈夫」は、その値へ至る全経路を追ってから言う。**
 - **対になった処理（開始と終了、取得と解放）で不具合が出たら、対称性の欠落をまず疑う。**
+
+## 画面輝度の時間帯制御（2026-09-25）
+
+- **輝度制御は`screen_brightness`の`setApplicationScreenBrightness`（アプリのウィンドウ単位）で実装済み。**
+  2:00〜19:00は15%、それ以外は100%（`lib/util/brightness_schedule.dart`）。電源供給中のみ有効で、
+  `battery_plus`の状態が`discharging`のときだけ`resetApplicationScreenBrightness`で本体設定に戻す
+  （`unknown`/`connectedNotCharging`は据え置き給電とみなす、ユーザー承認済みの設計判断）。
+  手動ボタン（ニュース欄ヘッダーの電球）の状態は次の切り替え時刻（2:00/19:00）まで保持。
+- **輝度の実効値は`adb shell dumpsys window windows | grep -o 'sbrt=[0-9.]*'`で機械的に確認できる。**
+  アプリがリセット中なら`sbrt`が出ない。電源状態は`dumpsys battery unplug` / `set status 3`（放電）/
+  `reset`で模擬できる。時刻は`adb root`後に`settings put global auto_time 0`→
+  `adb shell date -u MMDDhhmmYYYY.ss`で変更できる（検証後は`auto_time 1`に戻す）。
+- **時計を巻き戻すと「期限付きの手動状態」が残り続ける罠がある。** 検証で端末時刻を過去に戻したら
+  手動状態の期限（未来の2:00）より前になり自動に戻らなかった。切り替えた時刻（`_manualSince`）より
+  前になったら解除する判定を追加して解消済み。
+- **輝度の値は設定画面で変更可能（`AppSettings.dimBrightness`/`brightBrightness`、5%〜100%・5%刻み）。**
+  （2026-09-25）スライダーのドラッグ中は`BrightnessController.preview`で表示中の側だけ即時反映し、
+  指を離した時点で保存→`ref.listen(settingsProvider)`経由で`reapply`する。下限5%は画面が真っ黒で
+  操作不能になるのを避けるため。定数`defaultDimBrightness`等は既定値としてのみ残している。

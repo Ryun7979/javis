@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/news_models.dart';
+import '../providers/brightness_controller.dart';
 import '../providers/dashboard_controller.dart';
 import '../providers/settings_provider.dart';
 import '../screens/settings_screen.dart';
@@ -56,6 +57,7 @@ class _NewsFeedState extends ConsumerState<NewsFeed>
                     style: const TextStyle(fontSize: 11, color: Colors.white54),
                   ),
                 const Spacer(),
+                _BrightnessToggleButton(),
                 IconButton(
                   tooltip: '今すぐ更新',
                   iconSize: 18,
@@ -210,6 +212,31 @@ class _CategoryChip extends StatelessWidget {
         category.label,
         style: TextStyle(fontSize: 10, color: _color),
       ),
+    );
+  }
+}
+
+/// 画面の明るさ（明るい⇔暗い）を手動で切り替えるボタン。
+/// バッテリー駆動中は本体設定に従うため無効化する。
+class _BrightnessToggleButton extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final brightness = ref.watch(brightnessControllerProvider);
+    final String tooltip;
+    if (!brightness.onExternalPower) {
+      tooltip = 'バッテリー駆動中は本体の明るさ設定に従います';
+    } else {
+      tooltip = brightness.isDim ? '明るくする' : '暗くする';
+    }
+    return IconButton(
+      tooltip: tooltip,
+      iconSize: 18,
+      icon: Icon(brightness.isDim && brightness.onExternalPower
+          ? Icons.lightbulb_outline
+          : Icons.lightbulb),
+      onPressed: brightness.onExternalPower
+          ? () => ref.read(brightnessControllerProvider.notifier).toggle()
+          : null,
     );
   }
 }

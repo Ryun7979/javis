@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../providers/brightness_controller.dart';
 import '../providers/dashboard_controller.dart';
 import '../theme/cyberpunk_colors.dart';
 import '../widgets/clock_widget.dart';
@@ -24,6 +25,8 @@ class DashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(dashboardControllerProvider);
+    // 時間帯・電源状態に応じた輝度制御を、ダッシュボード表示中は常に動かしておく。
+    ref.watch(brightnessControllerProvider);
 
     return Scaffold(
       backgroundColor: Colors.transparent,

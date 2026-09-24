@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/observation_points.dart';
 import '../models/news_models.dart';
+import '../providers/brightness_controller.dart';
 import '../providers/settings_provider.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -59,6 +60,30 @@ class SettingsScreen extends ConsumerWidget {
             subtitle: const Text('端末のタイムゾーン設定によらず、時計・更新時刻・潮汐の日付判定を日本時間に固定します'),
             value: settings.useFixedJst,
             onChanged: (v) => notifier.update(settings.copyWith(useFixedJst: v)),
+          ),
+          const SizedBox(height: 24),
+          Text('画面の明るさ（電源接続時）', style: Theme.of(context).textTheme.titleMedium),
+          const Text(
+            'バッテリー駆動中は本体の明るさ設定に従います',
+            style: TextStyle(fontSize: 12, color: Colors.white54),
+          ),
+          _BrightnessSlider(
+            label: '暗い状態（2:00〜19:00）',
+            value: settings.dimBrightness,
+            onPreview: (v) => ref
+                .read(brightnessControllerProvider.notifier)
+                .preview(forDim: true, value: v),
+            onChangeEnd: (v) =>
+                notifier.update(settings.copyWith(dimBrightness: v)),
+          ),
+          _BrightnessSlider(
+            label: '明るい状態（19:00〜翌2:00）',
+            value: settings.brightBrightness,
+            onPreview: (v) => ref
+                .read(brightnessControllerProvider.notifier)
+                .preview(forDim: false, value: v),
+            onChangeEnd: (v) =>
+                notifier.update(settings.copyWith(brightBrightness: v)),
           ),
           const SizedBox(height: 24),
           Row(
@@ -181,6 +206,68 @@ class _IntervalDropdown extends StatelessWidget {
       onChanged: (v) {
         if (v != null) onChanged(v);
       },
+    );
+  }
+}
+
+/// 輝度（5%〜100%、5%刻み）を指定するスライダー。
+/// ドラッグ中は[onPreview]で画面へ即時反映し、指を離した時点で[onChangeEnd]により保存する。
+class _BrightnessSlider extends StatefulWidget {
+  const _BrightnessSlider({
+    required this.label,
+    required this.value,
+    required this.onPreview,
+    required this.onChangeEnd,
+  });
+
+  final String label;
+  final double value;
+  final ValueChanged<double> onPreview;
+  final ValueChanged<double> onChangeEnd;
+
+  @override
+  State<_BrightnessSlider> createState() => _BrightnessSliderState();
+}
+
+class _BrightnessSliderState extends State<_BrightnessSlider> {
+  static const _min = 0.05;
+  static const _max = 1.0;
+
+  late double _value = widget.value.clamp(_min, _max);
+
+  @override
+  void didUpdateWidget(_BrightnessSlider oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.value != widget.value) {
+      _value = widget.value.clamp(_min, _max);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        SizedBox(width: 200, child: Text(widget.label)),
+        Expanded(
+          child: Slider(
+            value: _value,
+            min: _min,
+            max: _max,
+            // 5%刻み（0.05〜1.0で19分割）。
+            divisions: 19,
+            label: '${(_value * 100).round()}%',
+            onChanged: (v) {
+              setState(() => _value = v);
+              widget.onPreview(v);
+            },
+            onChangeEnd: widget.onChangeEnd,
+          ),
+        ),
+        SizedBox(
+          width: 48,
+          child: Text('${(_value * 100).round()}%', textAlign: TextAlign.end),
+        ),
+      ],
     );
   }
 }
