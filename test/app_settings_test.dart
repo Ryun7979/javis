@@ -19,4 +19,19 @@ void main() {
     expect(restored.dimBrightness, defaultDimBrightness);
     expect(restored.brightBrightness, defaultBrightBrightness);
   });
+
+  test('記事の自動クローズ時間はJSONで保存・復元できる', () {
+    final settings =
+        AppSettings.defaults().copyWith(articleAutoCloseMinutes: 10);
+    final restored = AppSettings.fromJson(settings.toJson());
+    expect(restored.articleAutoCloseMinutes, 10);
+  });
+
+  test('自動クローズ時間を含まない古い保存データは既定値で復元する', () {
+    final json = AppSettings.defaults().toJson()
+      ..remove('articleAutoCloseMinutes');
+    final restored = AppSettings.fromJson(json);
+    expect(restored.articleAutoCloseMinutes,
+        AppSettings.defaultArticleAutoCloseMinutes);
+  });
 }

@@ -53,6 +53,16 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 24),
+          Text('ニュース記事を自動で閉じるまでの時間', style: Theme.of(context).textTheme.titleMedium),
+          _IntervalDropdown(
+            value: settings.articleAutoCloseMinutes,
+            options: const [1, 3, 5, 10, 30],
+            label: (m) => '無操作のまま$m分で閉じる',
+            onChanged: (v) => notifier.update(
+              settings.copyWith(articleAutoCloseMinutes: v),
+            ),
+          ),
+          const SizedBox(height: 24),
           Text('タイムゾーン', style: Theme.of(context).textTheme.titleMedium),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
@@ -189,11 +199,15 @@ class _IntervalDropdown extends StatelessWidget {
     required this.value,
     required this.options,
     required this.onChanged,
+    this.label = _everyMinutes,
   });
 
   final int value;
   final List<int> options;
   final ValueChanged<int> onChanged;
+  final String Function(int minutes) label;
+
+  static String _everyMinutes(int m) => '$m分ごと';
 
   @override
   Widget build(BuildContext context) {
@@ -201,7 +215,7 @@ class _IntervalDropdown extends StatelessWidget {
       initialValue: options.contains(value) ? value : options.first,
       items: [
         for (final m in options)
-          DropdownMenuItem(value: m, child: Text('$m分ごと')),
+          DropdownMenuItem(value: m, child: Text(label(m))),
       ],
       onChanged: (v) {
         if (v != null) onChanged(v);

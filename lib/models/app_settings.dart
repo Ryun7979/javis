@@ -13,6 +13,7 @@ class AppSettings {
     required this.useFixedJst,
     required this.dimBrightness,
     required this.brightBrightness,
+    required this.articleAutoCloseMinutes,
   });
 
   final LocationPoint location;
@@ -35,6 +36,12 @@ class AppSettings {
   /// 電源接続時、明るくする時間帯（19:00〜翌2:00）の画面輝度（0.0〜1.0）。
   final double brightBrightness;
 
+  /// ニュース記事のアプリ内表示を、無操作のまま自動で閉じるまでの時間（分）。
+  /// キオスクで記事を開きっぱなしのまま放置されるのを防ぐ。
+  final int articleAutoCloseMinutes;
+
+  static const defaultArticleAutoCloseMinutes = 3;
+
   static AppSettings defaults() => AppSettings(
         location: observationPoints.first,
         tideWeatherUpdateIntervalMinutes: 30,
@@ -43,6 +50,7 @@ class AppSettings {
         useFixedJst: true,
         dimBrightness: defaultDimBrightness,
         brightBrightness: defaultBrightBrightness,
+        articleAutoCloseMinutes: defaultArticleAutoCloseMinutes,
       );
 
   AppSettings copyWith({
@@ -53,6 +61,7 @@ class AppSettings {
     bool? useFixedJst,
     double? dimBrightness,
     double? brightBrightness,
+    int? articleAutoCloseMinutes,
   }) =>
       AppSettings(
         location: location ?? this.location,
@@ -64,6 +73,8 @@ class AppSettings {
         useFixedJst: useFixedJst ?? this.useFixedJst,
         dimBrightness: dimBrightness ?? this.dimBrightness,
         brightBrightness: brightBrightness ?? this.brightBrightness,
+        articleAutoCloseMinutes:
+            articleAutoCloseMinutes ?? this.articleAutoCloseMinutes,
       );
 
   Map<String, dynamic> toJson() => {
@@ -74,6 +85,7 @@ class AppSettings {
         'useFixedJst': useFixedJst,
         'dimBrightness': dimBrightness,
         'brightBrightness': brightBrightness,
+        'articleAutoCloseMinutes': articleAutoCloseMinutes,
       };
 
   factory AppSettings.fromJson(Map<String, dynamic> json) => AppSettings(
@@ -92,5 +104,8 @@ class AppSettings {
             defaultDimBrightness,
         brightBrightness: (json['brightBrightness'] as num?)?.toDouble() ??
             defaultBrightBrightness,
+        // 記事の自動クローズ設定の追加前に保存された設定では既定値を使う。
+        articleAutoCloseMinutes: json['articleAutoCloseMinutes'] as int? ??
+            defaultArticleAutoCloseMinutes,
       );
 }

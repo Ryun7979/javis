@@ -233,3 +233,14 @@
   （2026-09-25）スライダーのドラッグ中は`BrightnessController.preview`で表示中の側だけ即時反映し、
   指を離した時点で保存→`ref.listen(settingsProvider)`経由で`reapply`する。下限5%は画面が真っ黒で
   操作不能になるのを避けるため。定数`defaultDimBrightness`等は既定値としてのみ残している。
+
+## ニュース記事のアプリ内WebView表示（2026-09-25）
+
+- **ニュース記事のタップは外部ブラウザではなく、ニュースカード上に重ねたWebView（`webview_flutter`）で開く。**
+  `lib/widgets/article_viewer.dart`。無操作で自動クローズする時間は`AppSettings.articleAutoCloseMinutes`
+  （既定3分、設定画面で1/3/5/10/30分）。タイマーは`Listener.onPointerDown`・`setOnScrollPositionChange`・
+  ページ遷移開始で延長する。戻るボタンは`PopScope`でページ履歴→パネルを閉じる、の順。http(s)以外の遷移は遮断。
+- **`flutter pub add`で「Building with plugins requires symlink support」が出ても、Android向けの依存解決は
+  完了している。** Windowsデスクトップ向けプラグインのsymlink作成の警告で、`pubspec.lock`に追記済みなら無視してよい。
+- **GitBashでは`adb shell screencap -p /sdcard/x.png`のリモートパスも`//sdcard/...`にしないと誤変換で失敗する**
+  （pullだけでなくshell側も同じ）。
