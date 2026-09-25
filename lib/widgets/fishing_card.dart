@@ -12,7 +12,10 @@ import 'tide_chart.dart';
 
 /// 釣り情報カード（潮汐グラフ、満潮/干潮時刻、天気、気温、風速、釣りやすさの目安）。
 class FishingCard extends ConsumerWidget {
-  const FishingCard({super.key});
+  const FishingCard({super.key, this.headerTrailing});
+
+  /// ヘッダー右端に置くウィジェット（雨雲レーダーへの切り替えボタン）。
+  final Widget? headerTrailing;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -43,6 +46,10 @@ class FishingCard extends ConsumerWidget {
                   ),
                 if (state.fishingScore != null)
                   FishingScoreBadge(score: state.fishingScore!),
+                if (headerTrailing != null) ...[
+                  const SizedBox(width: 4),
+                  headerTrailing!,
+                ],
               ],
             ),
             Expanded(

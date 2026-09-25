@@ -34,4 +34,18 @@ void main() {
     expect(restored.articleAutoCloseMinutes,
         AppSettings.defaultArticleAutoCloseMinutes);
   });
+
+  test('釣り情報/雨雲レーダーの切り替え間隔はJSONで保存・復元できる', () {
+    final settings =
+        AppSettings.defaults().copyWith(panelSwitchIntervalMinutes: 0);
+    final restored = AppSettings.fromJson(settings.toJson());
+    expect(restored.panelSwitchIntervalMinutes, 0);
+  });
+
+  test('切り替え間隔を含まない古い保存データは既定値（10分）で復元する', () {
+    final json = AppSettings.defaults().toJson()
+      ..remove('panelSwitchIntervalMinutes');
+    final restored = AppSettings.fromJson(json);
+    expect(restored.panelSwitchIntervalMinutes, 10);
+  });
 }

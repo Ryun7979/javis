@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/cache_service.dart';
 import '../services/fishing_score_service.dart';
 import '../services/news_service.dart';
+import '../services/rain_radar_service.dart';
 import '../services/tide_service.dart';
 import '../services/weather_service.dart';
 
@@ -21,6 +22,10 @@ final weatherServiceProvider = Provider<WeatherService>(
 
 final newsServiceProvider = Provider<NewsService>(
   (ref) => NewsService(ref.watch(cacheServiceProvider)),
+);
+
+final rainRadarServiceProvider = Provider<RainRadarService>(
+  (ref) => RainRadarService(),
 );
 
 final fishingScoreServiceProvider = Provider<FishingScoreService>(

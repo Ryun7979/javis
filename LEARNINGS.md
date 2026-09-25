@@ -244,3 +244,18 @@
   完了している。** Windowsデスクトップ向けプラグインのsymlink作成の警告で、`pubspec.lock`に追記済みなら無視してよい。
 - **GitBashでは`adb shell screencap -p /sdcard/x.png`のリモートパスも`//sdcard/...`にしないと誤変換で失敗する**
   （pullだけでなくshell側も同じ）。
+
+## 雨雲レーダー（2026-09-26）
+
+- **釣り情報カードの位置は`FishingRadarPanel`で「釣り情報⇔雨雲レーダー」を切り替える。**
+  間隔は`AppSettings.panelSwitchIntervalMinutes`（既定10分、0=自動切り替えなし）。切り替え演出は
+  `HoloFlipSwitcher`（Y軸3Dフリップ＋ネオン縁＋走査線）。透視係数を0.0014にしたら手前の辺が時計まで
+  はみ出したので0.0006に下げた。フリップの途中を撮るには`adb shell "input tap ..; for i in 1 2 3; do screencap ..; done"`
+  のように端末内で連続撮影する（PC側から撮ると間に合わない）。
+- **気象庁ナウキャストは`jma.go.jp/bosai/jmatile/data/nowc/`（非公式、UTC時刻）。** 時刻一覧は
+  `targetTimes_N1`（実況）/`N2`（予報）/`N3`（雷等）。降水は`{base}/none/{valid}/surf/hrpns/{z}/{x}/{y}.png`。
+  **雷(liden)はPNGタイルではなく`.../surf/liden/data.geojson`**（タイルURLは全ズームで404）。
+  **N2はN1より遅れて更新されることがあり**、「実況と同じbasetimeの予報だけ」に絞ると予報が0件になった
+  → 予報は N2 の最新basetimeを使い、最新実況より後のvalidtimeだけ採る。
+- **出典表記は設定画面→「データの出典・利用規約」（`AttributionScreen`）と、レーダー右下の小さな表記。**
+  地理院タイルは色を反転・減光しているので「加工して作成」と明記している。

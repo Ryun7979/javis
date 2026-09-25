@@ -14,6 +14,7 @@ class AppSettings {
     required this.dimBrightness,
     required this.brightBrightness,
     required this.articleAutoCloseMinutes,
+    required this.panelSwitchIntervalMinutes,
   });
 
   final LocationPoint location;
@@ -42,6 +43,11 @@ class AppSettings {
 
   static const defaultArticleAutoCloseMinutes = 3;
 
+  /// 釣り情報と雨雲レーダーを自動で切り替える間隔（分）。0 のときは自動で切り替えない。
+  final int panelSwitchIntervalMinutes;
+
+  static const defaultPanelSwitchIntervalMinutes = 10;
+
   static AppSettings defaults() => AppSettings(
         location: observationPoints.first,
         tideWeatherUpdateIntervalMinutes: 30,
@@ -51,6 +57,7 @@ class AppSettings {
         dimBrightness: defaultDimBrightness,
         brightBrightness: defaultBrightBrightness,
         articleAutoCloseMinutes: defaultArticleAutoCloseMinutes,
+        panelSwitchIntervalMinutes: defaultPanelSwitchIntervalMinutes,
       );
 
   AppSettings copyWith({
@@ -62,6 +69,7 @@ class AppSettings {
     double? dimBrightness,
     double? brightBrightness,
     int? articleAutoCloseMinutes,
+    int? panelSwitchIntervalMinutes,
   }) =>
       AppSettings(
         location: location ?? this.location,
@@ -75,6 +83,8 @@ class AppSettings {
         brightBrightness: brightBrightness ?? this.brightBrightness,
         articleAutoCloseMinutes:
             articleAutoCloseMinutes ?? this.articleAutoCloseMinutes,
+        panelSwitchIntervalMinutes:
+            panelSwitchIntervalMinutes ?? this.panelSwitchIntervalMinutes,
       );
 
   Map<String, dynamic> toJson() => {
@@ -86,6 +96,7 @@ class AppSettings {
         'dimBrightness': dimBrightness,
         'brightBrightness': brightBrightness,
         'articleAutoCloseMinutes': articleAutoCloseMinutes,
+        'panelSwitchIntervalMinutes': panelSwitchIntervalMinutes,
       };
 
   factory AppSettings.fromJson(Map<String, dynamic> json) => AppSettings(
@@ -107,5 +118,8 @@ class AppSettings {
         // 記事の自動クローズ設定の追加前に保存された設定では既定値を使う。
         articleAutoCloseMinutes: json['articleAutoCloseMinutes'] as int? ??
             defaultArticleAutoCloseMinutes,
+        // 釣り情報/雨雲レーダー切り替えの追加前に保存された設定では既定値を使う。
+        panelSwitchIntervalMinutes: json['panelSwitchIntervalMinutes'] as int? ??
+            defaultPanelSwitchIntervalMinutes,
       );
 }

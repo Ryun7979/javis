@@ -5,6 +5,7 @@ import '../data/observation_points.dart';
 import '../models/news_models.dart';
 import '../providers/brightness_controller.dart';
 import '../providers/settings_provider.dart';
+import 'attribution_screen.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -50,6 +51,16 @@ class SettingsScreen extends ConsumerWidget {
             options: const [10, 15, 30, 60],
             onChanged: (v) => notifier.update(
               settings.copyWith(newsUpdateIntervalMinutes: v),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text('釣り情報と雨雲レーダーの切り替え間隔', style: Theme.of(context).textTheme.titleMedium),
+          _IntervalDropdown(
+            value: settings.panelSwitchIntervalMinutes,
+            options: const [1, 3, 5, 10, 15, 30, 60, 0],
+            label: (m) => m == 0 ? '自動で切り替えない（ボタンのみ）' : '$m分ごと',
+            onChanged: (v) => notifier.update(
+              settings.copyWith(panelSwitchIntervalMinutes: v),
             ),
           ),
           const SizedBox(height: 24),
@@ -130,6 +141,18 @@ class SettingsScreen extends ConsumerWidget {
                 ),
               ),
             ),
+          const SizedBox(height: 24),
+          Text('このアプリについて', style: Theme.of(context).textTheme.titleMedium),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.info_outline),
+            title: const Text('データの出典・利用規約'),
+            subtitle: const Text('気象庁・国土地理院・Open-Meteo・ニュース配信元'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const AttributionScreen()),
+            ),
+          ),
         ],
       ),
     );

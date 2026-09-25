@@ -6,13 +6,13 @@ import '../providers/dashboard_controller.dart';
 import '../theme/cyberpunk_colors.dart';
 import '../widgets/clock_widget.dart';
 import '../widgets/cyberpunk_background.dart';
-import '../widgets/fishing_card.dart';
+import '../widgets/fishing_radar_panel.dart';
 import '../widgets/neon_pulse_frame.dart';
 import '../widgets/news_feed.dart';
 import '../widgets/update_flash_overlay.dart';
 
 /// 卓上ダッシュボードのメイン画面。
-/// 左カラム: 大型時計（上）＋釣り情報カード（下、コンパクト）を縦積み。
+/// 左カラム: 大型時計（上）＋釣り情報カード/雨雲レーダー（下、コンパクト、定期的に切り替え）を縦積み。
 /// 右カラム: ニュースフィードを画面の半分ほど使い、大きく表示する。
 ///
 /// 設定ボタンはニュースフィードのヘッダー（更新ボタンの隣）に置く。
@@ -62,12 +62,9 @@ class DashboardScreen extends ConsumerWidget {
                     ),
                     Expanded(
                       flex: 2,
-                      child: NeonPulseFrame(
+                      child: const NeonPulseFrame(
                         color: CyberpunkColors.neonCyan,
-                        child: UpdateFlashOverlay(
-                          updateKey: state.lastUpdated,
-                          child: const FishingCard(),
-                        ),
+                        child: FishingRadarPanel(),
                       ),
                     ),
                   ],
