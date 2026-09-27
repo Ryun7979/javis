@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:http/http.dart' as http;
 import 'package:xml/xml.dart';
@@ -13,7 +14,7 @@ import 'cache_service.dart';
 /// RSS 1.0/2.0（`<item>`）とAtom（`<entry>`）に対応する。
 class NewsService {
   NewsService(this._cache, {http.Client? client})
-      : _client = client ?? http.Client();
+    : _client = client ?? http.Client();
 
   final CacheService _cache;
   final http.Client _client;
@@ -36,15 +37,10 @@ class NewsService {
           .get(Uri.parse(source.rssUrl))
           .timeout(const Duration(seconds: 15));
       if (res.statusCode != 200) {
-        throw NewsServiceException(
-          '${source.name}: HTTP ${res.statusCode}',
-        );
+        throw NewsServiceException('${source.name}: HTTP ${res.statusCode}');
       }
       final articles = parseFeed(utf8.decode(res.bodyBytes), source);
-      await _cache.writeJson(
-        key,
-        articles.map((e) => e.toJson()).toList(),
-      );
+      await _cache.writeJson(key, articles.map((e) => e.toJson()).toList());
       return articles;
     } catch (e) {
       if (cached != null) {
@@ -54,9 +50,64 @@ class NewsService {
     }
   }
 
-  List<NewsArticle> _decode(List raw) => raw
-      .map((e) => NewsArticle.fromJson(e as Map<String, dynamic>))
-      .toList();
+  static const _bookmarkCacheKey = 'hatena_bookmark_counts';
+  static const Duration _bookmarkCacheTtl = Duration(minutes: 60);
+
+  /// はてなブックマーク数を取得する（「総合」の注目度順に使う）。
+  ///
+  /// APIは1回50件までなので分割して問い合わせる。失敗しても例外は投げず、
+  /// 取れた分（なければ前回のキャッシュ）を返す。注目度は並べ替えの補助なので、
+  /// 取れないときは新着順のまま表示できれば十分。
+  Future<Map<String, int>> fetchBookmarkCounts(List<String> urls) async {
+    final cached = _cache.read(_bookmarkCacheKey);
+    final cachedCounts = cached == null
+        ? <String, int>{}
+        : (cached.$2 as Map).map((k, v) => MapEntry(k as String, v as int));
+    final targets = urls.where((u) => u.startsWith('http')).toSet().toList();
+    if (cached != null &&
+        DateTime.now().difference(cached.$1) < _bookmarkCacheTtl &&
+        targets.every(cachedCounts.containsKey)) {
+      return cachedCounts;
+    }
+
+    final counts = <String, int>{};
+    for (var i = 0; i < targets.length; i += 50) {
+      final chunk = targets.sublist(i, min(i + 50, targets.length));
+      final query = chunk.map((u) => 'url=${Uri.encodeComponent(u)}').join('&');
+      try {
+        final res = await _client
+            .get(
+              Uri.parse('https://bookmark.hatenaapis.com/count/entries?$query'),
+            )
+            .timeout(const Duration(seconds: 15));
+        if (res.statusCode != 200) continue;
+        counts.addAll(parseBookmarkCounts(res.body));
+      } catch (_) {
+        // 1回分が失敗しても残りは続ける。
+      }
+    }
+    if (counts.isEmpty) return cachedCounts;
+    // 一部の問い合わせだけ失敗した分は前回の値で補う（今の記事の分だけ残し、キャッシュを肥大させない）。
+    for (final u in targets) {
+      final old = cachedCounts[u];
+      if (old != null) counts.putIfAbsent(u, () => old);
+    }
+    await _cache.writeJson(_bookmarkCacheKey, counts);
+    return counts;
+  }
+
+  /// `{"URL": 件数, ...}` 形式の応答を読む。
+  static Map<String, int> parseBookmarkCounts(String body) {
+    final decoded = jsonDecode(body);
+    if (decoded is! Map) return const {};
+    return {
+      for (final e in decoded.entries)
+        if (e.value is num) e.key as String: (e.value as num).toInt(),
+    };
+  }
+
+  List<NewsArticle> _decode(List raw) =>
+      raw.map((e) => NewsArticle.fromJson(e as Map<String, dynamic>)).toList();
 
   static List<NewsArticle> parseFeed(String body, NewsSource source) {
     final doc = XmlDocument.parse(body);

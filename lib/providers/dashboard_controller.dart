@@ -156,6 +156,12 @@ class DashboardController extends StateNotifier<DashboardState> {
       newsErrors: errors,
       newsLastUpdated: appNow(settings.useFixedJst),
     );
+
+    // 「総合」の注目度順に使うはてなブックマーク数は、ニュースを先に表示してから取りに行く。
+    final links = state.allNewsSorted.map((a) => a.link).toList();
+    final counts = await newsService.fetchBookmarkCounts(links);
+    if (!mounted) return;
+    state = state.copyWith(newsBookmarkCounts: counts);
   }
 
   @override

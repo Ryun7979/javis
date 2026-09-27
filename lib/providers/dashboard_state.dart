@@ -2,6 +2,7 @@ import '../models/fishing_score.dart';
 import '../models/news_models.dart';
 import '../models/tide_data.dart';
 import '../models/weather_data.dart';
+import '../util/news_ranking.dart';
 
 class DashboardState {
   const DashboardState({
@@ -13,6 +14,7 @@ class DashboardState {
     this.weatherError,
     this.newsByCategory = const {},
     this.newsErrors = const {},
+    this.newsBookmarkCounts = const {},
     this.lastUpdated,
     this.newsLastUpdated,
   });
@@ -62,6 +64,13 @@ class DashboardState {
 
   static const allNewsPerSourceLimit = 15;
 
+  /// 記事URLごとのはてなブックマーク数（「総合」の注目度順に使う）。
+  final Map<String, int> newsBookmarkCounts;
+
+  /// 「総合」を注目度の高い順に並べたもの（対象の記事は [allNewsSorted] と同じ）。
+  List<NewsArticle> allNewsByPopularity(DateTime now) =>
+      sortByPopularity(allNewsSorted, newsBookmarkCounts, now);
+
   DashboardState copyWith({
     bool? isLoading,
     TideDayData? tide,
@@ -71,6 +80,7 @@ class DashboardState {
     String? weatherError,
     Map<NewsCategory, List<NewsArticle>>? newsByCategory,
     Map<NewsCategory, String?>? newsErrors,
+    Map<String, int>? newsBookmarkCounts,
     DateTime? lastUpdated,
     DateTime? newsLastUpdated,
   }) =>
@@ -83,6 +93,7 @@ class DashboardState {
         weatherError: weatherError,
         newsByCategory: newsByCategory ?? this.newsByCategory,
         newsErrors: newsErrors ?? this.newsErrors,
+        newsBookmarkCounts: newsBookmarkCounts ?? this.newsBookmarkCounts,
         lastUpdated: lastUpdated ?? this.lastUpdated,
         newsLastUpdated: newsLastUpdated ?? this.newsLastUpdated,
       );

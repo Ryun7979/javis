@@ -54,6 +54,23 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 24),
+          Text('ニュース一覧の自動ページ送り', style: Theme.of(context).textTheme.titleMedium),
+          _IntervalDropdown(
+            value: settings.newsPageScrollMinutes,
+            options: const [1, 2, 3, 5, 10, 0],
+            label: (m) => m == 0
+                ? '自動で送らない'
+                : '$m分ごとに1ページ送る',
+            onChanged: (v) => notifier.update(
+              settings.copyWith(newsPageScrollMinutes: v),
+            ),
+          ),
+          const Text(
+            '最後まで送ると先頭に戻ります。「総合」は戻るたびに新着順⇔注目度順'
+            '（はてなブックマーク数）を切り替えます。',
+            style: TextStyle(fontSize: 12, color: Colors.white54),
+          ),
+          const SizedBox(height: 24),
           Text('釣り情報と雨雲レーダーの切り替え間隔', style: Theme.of(context).textTheme.titleMedium),
           _IntervalDropdown(
             value: settings.panelSwitchIntervalMinutes,

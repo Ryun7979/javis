@@ -109,6 +109,15 @@ class AttributionScreen extends ConsumerWidget {
             ],
             links: const [],
           ),
+          const _Section(
+            title: 'はてなブックマーク',
+            credit: 'はてなブックマーク件数取得API（株式会社はてな）',
+            usages: ['ニュース「総合」の注目度順（各記事のブックマーク数）'],
+            notes: [
+              'ブックマーク数と配信からの経過時間をもとに端末内で並べ替えています。',
+            ],
+            links: ['https://developer.hatena.ne.jp/ja/documents/bookmark/apis/getcount'],
+          ),
           const SizedBox(height: 8),
           const Text(
             '日の出・日の入り・月齢は、端末内で天文計算により求めています（外部データなし）。',

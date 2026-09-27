@@ -15,6 +15,7 @@ class AppSettings {
     required this.brightBrightness,
     required this.articleAutoCloseMinutes,
     required this.panelSwitchIntervalMinutes,
+    required this.newsPageScrollMinutes,
     required this.apodSwitchIntervalMinutes,
     required this.apodBackgroundOpacity,
     required this.apodFullscreenAutoCloseMinutes,
@@ -52,6 +53,12 @@ class AppSettings {
 
   static const defaultPanelSwitchIntervalMinutes = 10;
 
+  /// ニュース一覧を無操作のまま1ページ分送る間隔（分）。0 のときは自動で送らない。
+  /// 最後まで送ったら「総合」は新着順⇔注目度順を切り替え、先頭から送り直す。
+  final int newsPageScrollMinutes;
+
+  static const defaultNewsPageScrollMinutes = 3;
+
   /// 時計の背景を「グリッド⇔NASAの宇宙写真」で切り替える間隔（分）。0 のときは切り替えずグリッドのまま。
   final int apodSwitchIntervalMinutes;
 
@@ -80,6 +87,7 @@ class AppSettings {
         brightBrightness: defaultBrightBrightness,
         articleAutoCloseMinutes: defaultArticleAutoCloseMinutes,
         panelSwitchIntervalMinutes: defaultPanelSwitchIntervalMinutes,
+        newsPageScrollMinutes: defaultNewsPageScrollMinutes,
         apodSwitchIntervalMinutes: defaultApodSwitchIntervalMinutes,
         apodBackgroundOpacity: defaultApodBackgroundOpacity,
         apodFullscreenAutoCloseMinutes: defaultApodFullscreenAutoCloseMinutes,
@@ -96,6 +104,7 @@ class AppSettings {
     double? brightBrightness,
     int? articleAutoCloseMinutes,
     int? panelSwitchIntervalMinutes,
+    int? newsPageScrollMinutes,
     int? apodSwitchIntervalMinutes,
     double? apodBackgroundOpacity,
     int? apodFullscreenAutoCloseMinutes,
@@ -115,6 +124,8 @@ class AppSettings {
             articleAutoCloseMinutes ?? this.articleAutoCloseMinutes,
         panelSwitchIntervalMinutes:
             panelSwitchIntervalMinutes ?? this.panelSwitchIntervalMinutes,
+        newsPageScrollMinutes:
+            newsPageScrollMinutes ?? this.newsPageScrollMinutes,
         apodSwitchIntervalMinutes:
             apodSwitchIntervalMinutes ?? this.apodSwitchIntervalMinutes,
         apodBackgroundOpacity:
@@ -135,6 +146,7 @@ class AppSettings {
         'brightBrightness': brightBrightness,
         'articleAutoCloseMinutes': articleAutoCloseMinutes,
         'panelSwitchIntervalMinutes': panelSwitchIntervalMinutes,
+        'newsPageScrollMinutes': newsPageScrollMinutes,
         'apodSwitchIntervalMinutes': apodSwitchIntervalMinutes,
         'apodBackgroundOpacity': apodBackgroundOpacity,
         'apodFullscreenAutoCloseMinutes': apodFullscreenAutoCloseMinutes,
@@ -167,6 +179,9 @@ class AppSettings {
         // 釣り情報/雨雲レーダー切り替えの追加前に保存された設定では既定値を使う。
         panelSwitchIntervalMinutes: json['panelSwitchIntervalMinutes'] as int? ??
             defaultPanelSwitchIntervalMinutes,
+        // ニュースの自動ページ送りの追加前に保存された設定では既定値を使う。
+        newsPageScrollMinutes: json['newsPageScrollMinutes'] as int? ??
+            defaultNewsPageScrollMinutes,
         // NASAの宇宙写真の追加前に保存された設定では既定値を使う。
         apodSwitchIntervalMinutes: json['apodSwitchIntervalMinutes'] as int? ??
             defaultApodSwitchIntervalMinutes,

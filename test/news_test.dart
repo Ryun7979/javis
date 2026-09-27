@@ -4,6 +4,7 @@ import 'package:wall_jarvis/models/app_settings.dart';
 import 'package:wall_jarvis/models/news_models.dart';
 import 'package:wall_jarvis/providers/dashboard_state.dart';
 import 'package:wall_jarvis/services/news_service.dart';
+import 'package:wall_jarvis/util/news_ranking.dart';
 
 const _source = NewsSource(
   name: 'テスト',
@@ -104,5 +105,65 @@ void main() {
         hasLength(DashboardState.allNewsPerSourceLimit));
     expect(all.where((a) => a.sourceName == '映画'), hasLength(3));
     expect(all.map((a) => a.title).toSet(), hasLength(all.length));
+  });
+
+  group('注目度順', () {
+    final now = DateTime.utc(2026, 9, 27, 12);
+    NewsArticle article(String id, int hoursAgo) => NewsArticle(
+          title: id,
+          link: 'https://example.com/$id',
+          sourceName: 'テスト',
+          category: NewsCategory.it,
+          publishedAt: now.subtract(Duration(hours: hoursAgo)),
+        );
+
+    test('同じブクマ数なら新しい記事ほど注目度が高い', () {
+      expect(
+        popularityScore(100, now.subtract(const Duration(hours: 1)), now),
+        greaterThan(
+            popularityScore(100, now.subtract(const Duration(hours: 24)), now)),
+      );
+      expect(popularityScore(0, now, now), 0);
+    });
+
+    test('ブクマ数と経過時間で並べ、0件同士は新着順を保つ', () {
+      final articles = [
+        article('新しい0件A', 0),
+        article('新しい0件B', 1),
+        article('少し前の人気', 3),
+        article('昨日の超人気', 24),
+      ];
+      final sorted = sortByPopularity(
+        articles,
+        {
+          'https://example.com/少し前の人気': 50,
+          'https://example.com/昨日の超人気': 200,
+        },
+        now,
+      );
+      // 50/(5^1.5)≈4.5 > 200/(26^1.5)≈1.5
+      expect(sorted.map((a) => a.title), [
+        '少し前の人気',
+        '昨日の超人気',
+        '新しい0件A',
+        '新しい0件B',
+      ]);
+    });
+
+    test('はてなブックマーク件数APIの応答を読む', () {
+      expect(
+        NewsService.parseBookmarkCounts(
+            '{"https://a.example/1":114,"https://a.example/2":0}'),
+        {'https://a.example/1': 114, 'https://a.example/2': 0},
+      );
+    });
+
+    test('ページ送り間隔の設定は保存・復元でき、古い設定では既定値になる', () {
+      final s = AppSettings.defaults().copyWith(newsPageScrollMinutes: 5);
+      expect(AppSettings.fromJson(s.toJson()).newsPageScrollMinutes, 5);
+      final old = AppSettings.defaults().toJson()..remove('newsPageScrollMinutes');
+      expect(AppSettings.fromJson(old).newsPageScrollMinutes,
+          AppSettings.defaultNewsPageScrollMinutes);
+    });
   });
 }

@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -13,6 +16,9 @@ import 'article_viewer.dart';
 
 /// ニュースフィード（総合＋ゲーム/AI/IT/映画/アウトドアをタブ切り替え）。
 /// RSSは設定された間隔（既定30分）で自動的に再取得され、随時更新される。
+///
+/// 無操作のまま設定の間隔（既定3分）ごとに表示中の一覧を1ページ送り、最後まで送ったら
+/// 先頭に戻る。「総合」は戻るたびに新着順⇔注目度順（はてなブックマーク数）を切り替える。
 class NewsFeed extends ConsumerStatefulWidget {
   const NewsFeed({super.key});
 
@@ -23,22 +29,107 @@ class NewsFeed extends ConsumerStatefulWidget {
 class _NewsFeedState extends ConsumerState<NewsFeed>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
+  late final List<ScrollController> _scrollControllers;
 
   /// アプリ内WebViewで表示中の記事URL（nullなら一覧を表示）。
   Uri? _openArticle;
+
+  /// 「総合」を注目度順で表示中か（false なら新着順）。
+  bool _popularOrder = false;
+
+  Timer? _pageTimer;
 
   int get _tabCount => NewsCategory.values.length + 1;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: _tabCount, vsync: this);
+    _tabController = TabController(length: _tabCount, vsync: this)
+      ..addListener(_onTabChanged);
+    _scrollControllers = List.generate(_tabCount, (_) => ScrollController());
+    ref.listenManual(
+      settingsProvider.select((s) => s.newsPageScrollMinutes),
+      (_, _) => _restartPageTimer(),
+      fireImmediately: true,
+    );
   }
 
   @override
   void dispose() {
+    _pageTimer?.cancel();
     _tabController.dispose();
+    for (final c in _scrollControllers) {
+      c.dispose();
+    }
     super.dispose();
+  }
+
+  void _onTabChanged() {
+    if (_tabController.indexIsChanging) return;
+    _restartPageTimer();
+    setState(() {}); // ヘッダーの並び順ボタンは「総合」のときだけ出す。
+  }
+
+  /// ページ送りのタイマーを最初から数え直す（タッチやタブ切り替えのたびに呼ぶ）。
+  void _restartPageTimer() {
+    _pageTimer?.cancel();
+    final minutes = ref.read(settingsProvider).newsPageScrollMinutes;
+    if (minutes <= 0) return;
+    _pageTimer = Timer.periodic(Duration(minutes: minutes), (_) => _turnPage());
+  }
+
+  void _turnPage() {
+    if (!mounted || _openArticle != null) return;
+    final index = _tabController.index;
+    final controller = _scrollControllers[index];
+    if (!controller.hasClients) return;
+    final position = controller.position;
+    if (position.pixels >= position.maxScrollExtent - 1) {
+      if (index == 0) {
+        // 並び順が変わると中身が入れ替わるので、アニメーションせずに先頭へ戻す。
+        setState(() => _popularOrder = !_popularOrder);
+        _jumpToTop(controller);
+      } else {
+        controller
+            .animateTo(
+              0,
+              duration: const Duration(milliseconds: 800),
+              curve: Curves.easeInOut,
+            )
+            .then((_) => _jumpToTop(controller));
+      }
+      return;
+    }
+    // 前のページの最後の行が少し見えるよう、1画面分より少しだけ手前まで送る。
+    controller.animateTo(
+      min(
+        position.pixels + position.viewportDimension - _pageOverlap,
+        position.maxScrollExtent,
+      ),
+      duration: const Duration(milliseconds: 800),
+      curve: Curves.easeInOut,
+    );
+  }
+
+  static const _pageOverlap = 32.0;
+
+  void _toggleOrder() {
+    setState(() => _popularOrder = !_popularOrder);
+    final controller = _scrollControllers[0];
+    _jumpToTop(controller);
+    _restartPageTimer();
+  }
+
+  /// 一覧の先頭へ戻す。行の高さが記事ごとに違うため、末尾から一気に戻ると
+  /// 並べ直し時の位置補正で少しずれて止まることがある（実機で1行弱ずれた）。
+  /// 描画し直した次のフレームでもう一度合わせる。
+  void _jumpToTop(ScrollController controller) {
+    if (controller.hasClients) controller.jumpTo(0);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (controller.hasClients && controller.offset != 0) {
+        controller.jumpTo(0);
+      }
+    });
   }
 
   @override
@@ -52,21 +143,25 @@ class _NewsFeedState extends ConsumerState<NewsFeed>
     return Card(
       margin: const EdgeInsets.all(8),
       clipBehavior: Clip.antiAlias,
-      child: Stack(
-        children: [
-          _buildFeed(state, useFixedJst, formatter),
-          if (openArticle != null)
-            Positioned.fill(
-              child: ArticleViewer(
-                key: ValueKey(openArticle),
-                url: openArticle,
-                autoCloseAfter: Duration(
-                  minutes: settings.articleAutoCloseMinutes,
+      // 触っている間は自動のページ送りを止めたいので、タッチのたびに数え直す。
+      child: Listener(
+        onPointerDown: (_) => _restartPageTimer(),
+        child: Stack(
+          children: [
+            _buildFeed(state, useFixedJst, formatter),
+            if (openArticle != null)
+              Positioned.fill(
+                child: ArticleViewer(
+                  key: ValueKey(openArticle),
+                  url: openArticle,
+                  autoCloseAfter: Duration(
+                    minutes: settings.articleAutoCloseMinutes,
+                  ),
+                  onClose: () => setState(() => _openArticle = null),
                 ),
-                onClose: () => setState(() => _openArticle = null),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -98,6 +193,20 @@ class _NewsFeedState extends ConsumerState<NewsFeed>
                   style: const TextStyle(fontSize: 11, color: Colors.white54),
                 ),
               const Spacer(),
+              if (_tabController.index == 0)
+                TextButton.icon(
+                  onPressed: _toggleOrder,
+                  icon: Icon(
+                    _popularOrder
+                        ? Icons.local_fire_department
+                        : Icons.schedule,
+                    size: 16,
+                  ),
+                  label: Text(
+                    _popularOrder ? '注目度順' : '新着順',
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                ),
               _BrightnessToggleButton(),
               IconButton(
                 tooltip: '今すぐ更新',
@@ -131,7 +240,11 @@ class _NewsFeedState extends ConsumerState<NewsFeed>
             controller: _tabController,
             children: [
               _NewsList(
-                articles: state.allNewsSorted,
+                controller: _scrollControllers[0],
+                articles: _popularOrder
+                    ? state.allNewsByPopularity(DateTime.now())
+                    : state.allNewsSorted,
+                bookmarkCounts: _popularOrder ? state.newsBookmarkCounts : null,
                 error: null,
                 showCategory: true,
                 useFixedJst: useFixedJst,
@@ -139,6 +252,7 @@ class _NewsFeedState extends ConsumerState<NewsFeed>
               ),
               for (final category in NewsCategory.values)
                 _NewsList(
+                  controller: _scrollControllers[1 + category.index],
                   articles: state.newsByCategory[category] ?? const [],
                   error: state.newsErrors[category],
                   showCategory: false,
@@ -155,14 +269,20 @@ class _NewsFeedState extends ConsumerState<NewsFeed>
 
 class _NewsList extends StatelessWidget {
   const _NewsList({
+    required this.controller,
     required this.articles,
+    this.bookmarkCounts,
     required this.error,
     required this.showCategory,
     required this.useFixedJst,
     required this.onOpen,
   });
 
+  final ScrollController controller;
   final List<NewsArticle> articles;
+
+  /// 記事ごとのはてなブックマーク数。null のときは表示しない（注目度順のときだけ渡す）。
+  final Map<String, int>? bookmarkCounts;
   final String? error;
   final bool showCategory;
   final bool useFixedJst;
@@ -188,11 +308,13 @@ class _NewsList extends StatelessWidget {
 
     final formatter = DateFormat('M/d HH:mm');
     return ListView.separated(
+      controller: controller,
       padding: const EdgeInsets.symmetric(vertical: 4),
       itemCount: articles.length,
       separatorBuilder: (_, _) => const Divider(height: 1),
       itemBuilder: (context, index) {
         final article = articles[index];
+        final bookmarks = bookmarkCounts?[article.link] ?? 0;
         return ListTile(
           dense: true,
           title: Text(
@@ -214,6 +336,16 @@ class _NewsList extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
+              if (bookmarks > 0) ...[
+                const SizedBox(width: 6),
+                Text(
+                  '$bookmarks users',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Colors.orangeAccent,
+                  ),
+                ),
+              ],
             ],
           ),
           onTap: () => onOpen(article.link),
@@ -229,12 +361,12 @@ class _CategoryChip extends StatelessWidget {
   final NewsCategory category;
 
   Color get _color => switch (category) {
-        NewsCategory.game => Colors.lightBlueAccent,
-        NewsCategory.ai => Colors.purpleAccent,
-        NewsCategory.it => Colors.greenAccent,
-        NewsCategory.movie => Colors.amberAccent,
-        NewsCategory.outdoor => Colors.lightGreenAccent,
-      };
+    NewsCategory.game => Colors.lightBlueAccent,
+    NewsCategory.ai => Colors.purpleAccent,
+    NewsCategory.it => Colors.greenAccent,
+    NewsCategory.movie => Colors.amberAccent,
+    NewsCategory.outdoor => Colors.lightGreenAccent,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -267,9 +399,11 @@ class _BrightnessToggleButton extends ConsumerWidget {
     return IconButton(
       tooltip: tooltip,
       iconSize: 18,
-      icon: Icon(brightness.isDim && brightness.onExternalPower
-          ? Icons.lightbulb_outline
-          : Icons.lightbulb),
+      icon: Icon(
+        brightness.isDim && brightness.onExternalPower
+            ? Icons.lightbulb_outline
+            : Icons.lightbulb,
+      ),
       onPressed: brightness.onExternalPower
           ? () => ref.read(brightnessControllerProvider.notifier).toggle()
           : null,
