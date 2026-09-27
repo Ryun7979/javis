@@ -24,6 +24,24 @@ class WebMercator {
     return Offset(x, y);
   }
 
+  /// 緯度経度の範囲（[south]〜[north]、[west]〜[east]）が[size]の画面にちょうど収まる
+  /// ズーム値（小数）。整数ズームのタイルを拡大して使う前提で、端数も返す。
+  static double fitZoom({
+    required double south,
+    required double west,
+    required double north,
+    required double east,
+    required Size size,
+    double tileSize = 256,
+  }) {
+    final sw = project(south, west, 0, tileSize: tileSize);
+    final ne = project(north, east, 0, tileSize: tileSize);
+    final w = (ne.dx - sw.dx).abs();
+    final h = (sw.dy - ne.dy).abs();
+    final scale = math.min(size.width / w, size.height / h);
+    return math.log(scale) / math.ln2;
+  }
+
   /// 世界ピクセル座標の矩形[viewport]を覆うのに必要なタイル番号の一覧。
   static List<TileIndex> tilesCovering(
     Rect viewport,

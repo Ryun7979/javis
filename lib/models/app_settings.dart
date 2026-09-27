@@ -1,5 +1,6 @@
 import '../data/default_news_sources.dart';
 import '../data/observation_points.dart';
+import '../data/prefectures.dart';
 import '../util/brightness_schedule.dart';
 import 'location_point.dart';
 import 'news_models.dart';
@@ -20,6 +21,7 @@ class AppSettings {
     required this.apodBackgroundOpacity,
     required this.apodFullscreenAutoCloseMinutes,
     required this.nasaApiKey,
+    required this.capitalMarkerPrefectures,
   });
 
   final LocationPoint location;
@@ -77,6 +79,9 @@ class AppSettings {
   /// NASA APIキー。空のときは共用の DEMO_KEY を使う（端末内のHiveにだけ保存される）。
   final String nasaApiKey;
 
+  /// 雨雲レーダーに県庁所在地のマーク（マゼンタ）を出す都道府県のコード（JIS X 0401）。
+  final Set<int> capitalMarkerPrefectures;
+
   static AppSettings defaults() => AppSettings(
         location: observationPoints.first,
         tideWeatherUpdateIntervalMinutes: 30,
@@ -92,6 +97,7 @@ class AppSettings {
         apodBackgroundOpacity: defaultApodBackgroundOpacity,
         apodFullscreenAutoCloseMinutes: defaultApodFullscreenAutoCloseMinutes,
         nasaApiKey: '',
+        capitalMarkerPrefectures: allPrefectureCodes,
       );
 
   AppSettings copyWith({
@@ -109,6 +115,7 @@ class AppSettings {
     double? apodBackgroundOpacity,
     int? apodFullscreenAutoCloseMinutes,
     String? nasaApiKey,
+    Set<int>? capitalMarkerPrefectures,
   }) =>
       AppSettings(
         location: location ?? this.location,
@@ -133,6 +140,8 @@ class AppSettings {
         apodFullscreenAutoCloseMinutes: apodFullscreenAutoCloseMinutes ??
             this.apodFullscreenAutoCloseMinutes,
         nasaApiKey: nasaApiKey ?? this.nasaApiKey,
+        capitalMarkerPrefectures:
+            capitalMarkerPrefectures ?? this.capitalMarkerPrefectures,
       );
 
   Map<String, dynamic> toJson() => {
@@ -151,6 +160,7 @@ class AppSettings {
         'apodBackgroundOpacity': apodBackgroundOpacity,
         'apodFullscreenAutoCloseMinutes': apodFullscreenAutoCloseMinutes,
         'nasaApiKey': nasaApiKey,
+        'capitalMarkerPrefectures': capitalMarkerPrefectures.toList()..sort(),
       };
 
   factory AppSettings.fromJson(Map<String, dynamic> json) => AppSettings(
@@ -196,5 +206,9 @@ class AppSettings {
             json['apodFullscreenAutoCloseMinutes'] as int? ??
                 defaultApodFullscreenAutoCloseMinutes,
         nasaApiKey: json['nasaApiKey'] as String? ?? '',
+        // 県庁所在地マークの追加前に保存された設定では全都道府県を表示する。
+        capitalMarkerPrefectures:
+            (json['capitalMarkerPrefectures'] as List?)?.cast<int>().toSet() ??
+                allPrefectureCodes,
       );
 }

@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../data/prefectures.dart';
 import '../models/rain_radar.dart';
 import '../providers/core_providers.dart';
 import '../providers/settings_provider.dart';
@@ -41,8 +43,14 @@ class _RainRadarPanelState extends ConsumerState<RainRadarPanel> {
   static const _holdAtLatest = Duration(milliseconds: 1500);
   static const _holdAtEnd = Duration(milliseconds: 2200);
 
+  /// 広域表示（地方全体）と現状の縮尺を切り替えるときのフェード時間。
+  static const _viewFade = Duration(milliseconds: 500);
+
   List<RadarFrame> _frames = const [];
   int _index = 0;
+
+  /// true なら釣り場を含む地方全体を見渡す広域表示。アニメーションが一巡するたびに切り替える。
+  bool _wide = false;
   String? _error;
   bool _loading = true;
   Timer? _refreshTimer;
@@ -95,7 +103,10 @@ class _RainRadarPanelState extends ConsumerState<RainRadarPanel> {
             : _frameDuration;
     _frameTimer = Timer(hold, () {
       if (!mounted) return;
-      setState(() => _index = (_index + 1) % _frames.length);
+      setState(() {
+        _index = (_index + 1) % _frames.length;
+        if (_index == 0) _wide = !_wide;
+      });
       _scheduleNextFrame();
     });
   }
@@ -105,6 +116,27 @@ class _RainRadarPanelState extends ConsumerState<RainRadarPanel> {
     final settings = ref.watch(settingsProvider);
     final location = settings.location;
     final frame = _frames.isEmpty ? null : _frames[_index];
+    final region =
+        nearestPrefecture(location.latitude, location.longitude).region;
+    final capitals = [
+      for (final p in prefectures)
+        if (settings.capitalMarkerPrefectures.contains(p.code)) p,
+    ];
+
+    Widget map({required bool wide}) => AnimatedOpacity(
+          opacity: wide == _wide ? 1 : 0,
+          duration: _viewFade,
+          child: _RadarMap(
+            latitude: location.latitude,
+            longitude: location.longitude,
+            region: wide ? region : null,
+            zoom: _zoom,
+            tileSize: _tileSize,
+            frames: _frames,
+            index: _index,
+            capitals: capitals,
+          ),
+        );
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -123,7 +155,7 @@ class _RainRadarPanelState extends ConsumerState<RainRadarPanel> {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  location.name,
+                  _wide ? '${location.name} ・ ${region.label}全域' : location.name,
                   style: const TextStyle(fontSize: 12, color: Colors.white54),
                 ),
                 const Spacer(),
@@ -156,14 +188,9 @@ class _RainRadarPanelState extends ConsumerState<RainRadarPanel> {
                     : Stack(
                         fit: StackFit.expand,
                         children: [
-                          _RadarMap(
-                            latitude: location.latitude,
-                            longitude: location.longitude,
-                            zoom: _zoom,
-                            tileSize: _tileSize,
-                            frames: _frames,
-                            index: _index,
-                          ),
+                          // 両方の縮尺のタイルを常に読み込んでおき、切り替え時は重ねてフェードするだけにする。
+                          map(wide: false),
+                          map(wide: true),
                           const Positioned(
                             right: 6,
                             top: 6,
@@ -208,14 +235,33 @@ class _RadarMap extends StatelessWidget {
     required this.tileSize,
     required this.frames,
     required this.index,
+    required this.capitals,
+    this.region,
   });
 
   final double latitude;
   final double longitude;
+
+  /// 現状（釣り場中心）の表示に使うズーム。
   final int zoom;
   final double tileSize;
   final List<RadarFrame> frames;
   final int index;
+
+  /// 県庁所在地のマークを出す都道府県。
+  final List<Prefecture> capitals;
+
+  /// 指定されていれば、その地方全体が収まる広域表示にする。
+  final JapanRegion? region;
+
+  /// 広域表示のズームの範囲。上限は現状より必ず引いた縮尺になるよう[zoom]未満にする。
+  static const _minWideZoom = 4.0;
+
+  /// 地方の範囲の外側に足す余白（範囲の幅・高さに対する割合）。
+  static const _wideMargin = 0.06;
+
+  /// 釣り場のマークとこれ以上近い県庁所在地のマークは、釣り場を優先して描かない。
+  static const _capitalHideDistance = 12.0;
 
   /// 地理院タイル（淡色地図）を反転・減光して、ダークテーマに馴染む夜間地図風にする。
   /// 色を変えているため、出典ページでは「加工して作成」と表記している。
@@ -231,27 +277,72 @@ class _RadarMap extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final size = constraints.biggest;
-        final center = WebMercator.project(
-          latitude,
-          longitude,
-          zoom,
-          tileSize: tileSize,
-        );
+        // 読み込むタイルの整数ズーム[tileZoom]と、それを画面に並べるときの拡大率[scale]。
+        // 広域表示では地方の範囲が収まる小数ズームを求め、切り捨てた整数ズームのタイルを拡大して使う。
+        final int tileZoom;
+        final double scale;
+        final Offset center;
+        final r = region;
+        if (r == null) {
+          tileZoom = zoom;
+          scale = 1;
+          center = WebMercator.project(latitude, longitude, zoom,
+              tileSize: tileSize);
+        } else {
+          // 釣り場が地方の範囲の端にある場合も含め、釣り場が必ず入るようにする。
+          final south = math.min(r.south, latitude);
+          final north = math.max(r.north, latitude);
+          final west = math.min(r.west, longitude);
+          final east = math.max(r.east, longitude);
+          final mLat = (north - south) * _wideMargin;
+          final mLon = (east - west) * _wideMargin;
+          final z = WebMercator.fitZoom(
+            south: south - mLat,
+            west: west - mLon,
+            north: north + mLat,
+            east: east + mLon,
+            size: size,
+            tileSize: tileSize,
+          ).clamp(_minWideZoom, zoom - 1.0);
+          tileZoom = z.floor();
+          scale = math.pow(2, z - tileZoom).toDouble();
+          final sw =
+              WebMercator.project(south, west, tileZoom, tileSize: tileSize);
+          final ne =
+              WebMercator.project(north, east, tileZoom, tileSize: tileSize);
+          center = Offset.lerp(sw, ne, 0.5)!;
+        }
         final viewport = Rect.fromCenter(
           center: center,
-          width: size.width,
-          height: size.height,
+          width: size.width / scale,
+          height: size.height / scale,
         );
         final tiles =
-            WebMercator.tilesCovering(viewport, zoom, tileSize: tileSize);
+            WebMercator.tilesCovering(viewport, tileZoom, tileSize: tileSize);
+
+        /// 緯度経度を、このウィジェット内の画面座標に変換する。
+        Offset toScreen(double lat, double lon) =>
+            (WebMercator.project(lat, lon, tileZoom, tileSize: tileSize) -
+                viewport.topLeft) *
+            scale;
+
+        final spot = toScreen(latitude, longitude);
+        final bounds = (Offset.zero & size).inflate(8);
+        final capitalPoints = [
+          for (final p in capitals)
+            if (toScreen(p.latitude, p.longitude) case final pos
+                when bounds.contains(pos) &&
+                    (pos - spot).distance >= _capitalHideDistance)
+              pos,
+        ];
 
         List<Widget> tileLayer(String Function(TileIndex t) url) => [
               for (final t in tiles)
                 Positioned(
-                  left: t.x * tileSize - viewport.left,
-                  top: t.y * tileSize - viewport.top,
-                  width: tileSize,
-                  height: tileSize,
+                  left: (t.x * tileSize - viewport.left) * scale,
+                  top: (t.y * tileSize - viewport.top) * scale,
+                  width: tileSize * scale,
+                  height: tileSize * scale,
                   child: Image.network(
                     url(t),
                     fit: BoxFit.fill,
@@ -296,13 +387,7 @@ class _RadarMap extends StatelessWidget {
               ),
             for (final s in strikes)
               _positionedAt(
-                WebMercator.project(
-                      s.latitude,
-                      s.longitude,
-                      zoom,
-                      tileSize: tileSize,
-                    ) -
-                    viewport.topLeft,
+                toScreen(s.latitude, s.longitude),
                 const Icon(
                   Icons.bolt,
                   size: 18,
@@ -313,7 +398,9 @@ class _RadarMap extends StatelessWidget {
                 ),
                 18,
               ),
-            _positionedAt(center - viewport.topLeft, const _SpotMarker(), 28),
+            for (final pos in capitalPoints)
+              _positionedAt(pos, const _CapitalMarker(), 14),
+            _positionedAt(spot, const _SpotMarker(), 28),
           ],
         );
       },
@@ -327,6 +414,43 @@ class _RadarMap extends StatelessWidget {
         height: size,
         child: child,
       );
+}
+
+/// 県庁所在地を示すマゼンタの小さな点。釣り場のマークより控えめにする。
+class _CapitalMarker extends StatelessWidget {
+  const _CapitalMarker();
+
+  @override
+  Widget build(BuildContext context) =>
+      const CustomPaint(painter: _CapitalMarkerPainter());
+}
+
+class _CapitalMarkerPainter extends CustomPainter {
+  const _CapitalMarkerPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final c = size.center(Offset.zero);
+    canvas.drawCircle(
+      c,
+      5,
+      Paint()
+        ..color = CyberpunkColors.neonMagenta.withValues(alpha: 0.35)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3),
+    );
+    canvas.drawCircle(c, 2.6, Paint()..color = CyberpunkColors.neonMagenta);
+    canvas.drawCircle(
+      c,
+      2.6,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.8
+        ..color = Colors.white70,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_CapitalMarkerPainter old) => false;
 }
 
 /// 釣り場の位置を示す、ゆっくり広がるネオンのリング。

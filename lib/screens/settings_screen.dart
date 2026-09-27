@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/observation_points.dart';
+import '../data/prefectures.dart';
 import '../models/news_models.dart';
 import '../providers/brightness_controller.dart';
 import '../providers/settings_provider.dart';
 import 'attribution_screen.dart';
+import 'capital_marker_settings_screen.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -79,6 +81,20 @@ class SettingsScreen extends ConsumerWidget {
             label: (m) => m == 0 ? '自動で切り替えない（ボタンのみ）' : '$m分ごと',
             onChanged: (v) => notifier.update(
               settings.copyWith(panelSwitchIntervalMinutes: v),
+            ),
+          ),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.location_city),
+            title: const Text('雨雲レーダーの県庁所在地マーク'),
+            subtitle: Text(
+              '${settings.capitalMarkerPrefectures.length}/${prefectures.length} 都道府県を表示',
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const CapitalMarkerSettingsScreen(),
+              ),
             ),
           ),
           const SizedBox(height: 24),
