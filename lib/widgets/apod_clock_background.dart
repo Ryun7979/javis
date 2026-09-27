@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -7,10 +5,12 @@ import '../models/apod.dart';
 import '../providers/apod_controller.dart';
 import '../providers/settings_provider.dart';
 import '../theme/cyberpunk_colors.dart';
+import '../util/aligned_timer.dart';
+import '../util/app_clock.dart';
 import 'apod_fullscreen_view.dart';
 
 /// 時計の領域の背景を、設定の間隔（既定15分）で「グリッド（画面全体の背景のまま）」と
-/// 「NASAの宇宙写真」に切り替える。写真は時計が読みにくくならないよう、設定の不透明度で薄く敷き、
+/// 「NASAの宇宙写真」に切り替える（毎時0分を起点にした区切りで切り替える）。写真は時計が読みにくくならないよう、設定の不透明度で薄く敷き、
 /// 縁をぼかして周囲のグリッドになじませる。
 ///
 /// 写真が取得できているときは右上に全画面表示ボタンを出す。
@@ -26,7 +26,7 @@ class ApodClockBackground extends ConsumerStatefulWidget {
 
 class _ApodClockBackgroundState extends ConsumerState<ApodClockBackground> {
   bool _showPhoto = false;
-  Timer? _switchTimer;
+  AlignedPeriodicTimer? _switchTimer;
 
   @override
   void initState() {
@@ -47,9 +47,13 @@ class _ApodClockBackgroundState extends ConsumerState<ApodClockBackground> {
       if (_showPhoto) setState(() => _showPhoto = false);
       return;
     }
-    _switchTimer = Timer.periodic(Duration(minutes: minutes), (_) {
-      if (mounted) setState(() => _showPhoto = !_showPhoto);
-    });
+    _switchTimer = AlignedPeriodicTimer(
+      intervalMinutes: minutes,
+      now: () => appNow(ref.read(settingsProvider).useFixedJst),
+      onTick: () {
+        if (mounted) setState(() => _showPhoto = !_showPhoto);
+      },
+    );
   }
 
   void _openFullscreen(ApodImage apod) {

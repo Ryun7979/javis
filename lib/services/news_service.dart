@@ -19,7 +19,9 @@ class NewsService {
   final CacheService _cache;
   final http.Client _client;
 
-  static const Duration _cacheTtl = Duration(minutes: 10);
+  // 最短の自動更新間隔（10分）より少し短くする。同じ長さだと、区切りの時刻の更新で
+  // 前回取得からわずかに10分未満となりキャッシュが使われ、1回分更新が飛ぶ。
+  static const Duration _cacheTtl = Duration(minutes: 9);
 
   String _cacheKey(NewsSource source) => 'news_${source.rssUrl}';
 

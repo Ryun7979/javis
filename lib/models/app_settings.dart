@@ -156,8 +156,12 @@ class AppSettings {
   factory AppSettings.fromJson(Map<String, dynamic> json) => AppSettings(
         location: LocationPoint.fromJson(
             json['location'] as Map<String, dynamic>),
+        // 毎時の区切りで更新するようにした際、60で割り切れない45分は選択肢から外したので30分に読み替える。
         tideWeatherUpdateIntervalMinutes:
-            json['tideWeatherUpdateIntervalMinutes'] as int,
+            switch (json['tideWeatherUpdateIntervalMinutes'] as int) {
+          45 => 30,
+          final m => m,
+        },
         newsUpdateIntervalMinutes: json['newsUpdateIntervalMinutes'] as int,
         // 既定の配信元が増える前に保存された設定には、増えた分だけ追加する（版の記録がなければ版1）。
         newsSources: migrateNewsSources(

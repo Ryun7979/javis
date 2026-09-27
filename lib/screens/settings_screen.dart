@@ -39,7 +39,8 @@ class SettingsScreen extends ConsumerWidget {
           Text('潮汐・天気の自動更新間隔', style: Theme.of(context).textTheme.titleMedium),
           _IntervalDropdown(
             value: settings.tideWeatherUpdateIntervalMinutes,
-            options: const [15, 30, 45, 60],
+            // 毎時0分を起点に区切って更新するため、60の約数だけにしている。
+            options: const [15, 30, 60],
             onChanged: (v) => notifier.update(
               settings.copyWith(tideWeatherUpdateIntervalMinutes: v),
             ),

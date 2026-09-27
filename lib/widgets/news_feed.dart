@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -11,13 +10,14 @@ import '../providers/dashboard_controller.dart';
 import '../providers/dashboard_state.dart';
 import '../providers/settings_provider.dart';
 import '../screens/settings_screen.dart';
+import '../util/aligned_timer.dart';
 import '../util/app_clock.dart';
 import 'article_viewer.dart';
 
 /// ニュースフィード（総合＋ゲーム/AI/IT/映画/アウトドアをタブ切り替え）。
 /// RSSは設定された間隔（既定30分）で自動的に再取得され、随時更新される。
 ///
-/// 無操作のまま設定の間隔（既定3分）ごとに表示中の一覧を1ページ送り、最後まで送ったら
+/// 設定の間隔（既定3分、毎時0分を起点にした区切り）ごとに表示中の一覧を1ページ送り、最後まで送ったら
 /// 先頭に戻る。「総合」は戻るたびに新着順⇔注目度順（はてなブックマーク数）を切り替える。
 class NewsFeed extends ConsumerStatefulWidget {
   const NewsFeed({super.key});
@@ -37,7 +37,7 @@ class _NewsFeedState extends ConsumerState<NewsFeed>
   /// 「総合」を注目度順で表示中か（false なら新着順）。
   bool _popularOrder = false;
 
-  Timer? _pageTimer;
+  AlignedPeriodicTimer? _pageTimer;
 
   int get _tabCount => NewsCategory.values.length + 1;
 
@@ -66,16 +66,22 @@ class _NewsFeedState extends ConsumerState<NewsFeed>
 
   void _onTabChanged() {
     if (_tabController.indexIsChanging) return;
-    _restartPageTimer();
+    _pageTimer?.deferIfSoon();
     setState(() {}); // ヘッダーの並び順ボタンは「総合」のときだけ出す。
   }
 
-  /// ページ送りのタイマーを最初から数え直す（タッチやタブ切り替えのたびに呼ぶ）。
+  /// ページ送りのタイマーを作り直す（設定の間隔が変わったときに呼ぶ）。
+  /// 送るのは毎時0分を起点にした区切り（3分なら毎時00・03・06…分）。
   void _restartPageTimer() {
     _pageTimer?.cancel();
+    _pageTimer = null;
     final minutes = ref.read(settingsProvider).newsPageScrollMinutes;
     if (minutes <= 0) return;
-    _pageTimer = Timer.periodic(Duration(minutes: minutes), (_) => _turnPage());
+    _pageTimer = AlignedPeriodicTimer(
+      intervalMinutes: minutes,
+      now: () => appNow(ref.read(settingsProvider).useFixedJst),
+      onTick: _turnPage,
+    );
   }
 
   void _turnPage() {
@@ -117,7 +123,7 @@ class _NewsFeedState extends ConsumerState<NewsFeed>
     setState(() => _popularOrder = !_popularOrder);
     final controller = _scrollControllers[0];
     _jumpToTop(controller);
-    _restartPageTimer();
+    _pageTimer?.deferIfSoon();
   }
 
   /// 一覧の先頭へ戻す。行の高さが記事ごとに違うため、末尾から一気に戻ると
@@ -143,9 +149,9 @@ class _NewsFeedState extends ConsumerState<NewsFeed>
     return Card(
       margin: const EdgeInsets.all(8),
       clipBehavior: Clip.antiAlias,
-      // 触っている間は自動のページ送りを止めたいので、タッチのたびに数え直す。
+      // 触った直後に勝手に送られないよう、次の区切りが近ければ1回見送る。
       child: Listener(
-        onPointerDown: (_) => _restartPageTimer(),
+        onPointerDown: (_) => _pageTimer?.deferIfSoon(),
         child: Stack(
           children: [
             _buildFeed(state, useFixedJst, formatter),

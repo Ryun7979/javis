@@ -14,7 +14,9 @@ class WeatherService {
   final CacheService _cache;
   final http.Client _client;
 
-  static const Duration _cacheTtl = Duration(minutes: 15);
+  // 最短の自動更新間隔（15分）より少し短くする。同じ長さだと、区切りの時刻の更新で
+  // 前回取得からわずかに15分未満となりキャッシュが使われ、1回分更新が飛ぶ。
+  static const Duration _cacheTtl = Duration(minutes: 14);
 
   String _cacheKey(double lat, double lon) =>
       'weather_${lat.toStringAsFixed(2)}_${lon.toStringAsFixed(2)}';

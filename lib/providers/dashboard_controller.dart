@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/legacy.dart';
 
 import '../models/app_settings.dart';
 import '../models/news_models.dart';
+import '../util/aligned_timer.dart';
 import '../util/app_clock.dart';
 import 'core_providers.dart';
 import 'dashboard_state.dart';
@@ -17,8 +18,8 @@ class DashboardController extends StateNotifier<DashboardState> {
   }
 
   final Ref _ref;
-  Timer? _tideWeatherTimer;
-  Timer? _newsTimer;
+  AlignedPeriodicTimer? _tideWeatherTimer;
+  AlignedPeriodicTimer? _newsTimer;
 
   void _init() {
     unawaited(refreshTideWeather());
@@ -54,13 +55,17 @@ class DashboardController extends StateNotifier<DashboardState> {
     _tideWeatherTimer?.cancel();
     _newsTimer?.cancel();
     final settings = _ref.read(settingsProvider);
-    _tideWeatherTimer = Timer.periodic(
-      Duration(minutes: settings.tideWeatherUpdateIntervalMinutes),
-      (_) => unawaited(refreshTideWeather()),
+    // 起動からの経過ではなく、毎時0分を起点にした区切り（30分なら毎時00・30分）で更新する。
+    DateTime now() => appNow(_ref.read(settingsProvider).useFixedJst);
+    _tideWeatherTimer = AlignedPeriodicTimer(
+      intervalMinutes: settings.tideWeatherUpdateIntervalMinutes,
+      now: now,
+      onTick: () => unawaited(refreshTideWeather()),
     );
-    _newsTimer = Timer.periodic(
-      Duration(minutes: settings.newsUpdateIntervalMinutes),
-      (_) => unawaited(refreshNews()),
+    _newsTimer = AlignedPeriodicTimer(
+      intervalMinutes: settings.newsUpdateIntervalMinutes,
+      now: now,
+      onTick: () => unawaited(refreshNews()),
     );
   }
 

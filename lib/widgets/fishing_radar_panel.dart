@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -7,14 +6,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/dashboard_controller.dart';
 import '../providers/settings_provider.dart';
 import '../theme/cyberpunk_colors.dart';
+import '../util/aligned_timer.dart';
+import '../util/app_clock.dart';
 import 'fishing_card.dart';
 import 'rain_radar_panel.dart';
 import 'update_flash_overlay.dart';
 
 /// 釣り情報カードと雨雲レーダーを、設定の間隔（既定10分）で自動的に切り替える枠。
+/// 切り替えは毎時0分を起点にした区切り（10分なら毎時00・10・20…分）で行う。
 ///
 /// 各カードのヘッダーにある切り替えボタンで手動でも切り替えられる。手動で切り替えた
-/// 場合は、その時点から改めて設定の間隔が経つまで自動切り替えを待つ。
+/// 直後に区切りが来る場合（間隔の半分未満）は、その区切りでの自動切り替えを見送る。
 class FishingRadarPanel extends ConsumerStatefulWidget {
   const FishingRadarPanel({super.key});
 
@@ -24,7 +26,7 @@ class FishingRadarPanel extends ConsumerStatefulWidget {
 
 class _FishingRadarPanelState extends ConsumerState<FishingRadarPanel> {
   bool _showRadar = false;
-  Timer? _autoSwitchTimer;
+  AlignedPeriodicTimer? _autoSwitchTimer;
 
   @override
   void initState() {
@@ -42,14 +44,18 @@ class _FishingRadarPanelState extends ConsumerState<FishingRadarPanel> {
     _autoSwitchTimer?.cancel();
     _autoSwitchTimer = minutes <= 0
         ? null
-        : Timer.periodic(Duration(minutes: minutes), (_) {
-            if (mounted) setState(() => _showRadar = !_showRadar);
-          });
+        : AlignedPeriodicTimer(
+            intervalMinutes: minutes,
+            now: () => appNow(ref.read(settingsProvider).useFixedJst),
+            onTick: () {
+              if (mounted) setState(() => _showRadar = !_showRadar);
+            },
+          );
   }
 
   void _toggle() {
     setState(() => _showRadar = !_showRadar);
-    _restartAutoSwitch(ref.read(settingsProvider).panelSwitchIntervalMinutes);
+    _autoSwitchTimer?.deferIfSoon();
   }
 
   @override
