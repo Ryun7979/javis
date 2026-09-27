@@ -37,6 +37,8 @@ class DashboardState {
   /// 全ジャンルのニュースを新着順にまとめたもの（「総合」タブ用）。
   /// 同じ記事が複数の配信元（例: ITmedia NEWSとITmedia AI+）に重複掲載される
   /// ことがあるため、タイトルが同じものは1件にまとめる。
+  /// 記事数の多い配信元（ゲーム系など）で埋まらないよう、配信元ごとに新着
+  /// [allNewsPerSourceLimit] 件までに絞る。
   List<NewsArticle> get allNewsSorted {
     final all = newsByCategory.values.expand((e) => e).toList();
     all.sort((a, b) {
@@ -48,8 +50,17 @@ class DashboardState {
       return bd.compareTo(ad);
     });
     final seenTitles = <String>{};
-    return all.where((a) => seenTitles.add(a.title)).toList();
+    final perSource = <String, int>{};
+    return all.where((a) {
+      if (!seenTitles.add(a.title)) return false;
+      final n = perSource[a.sourceName] ?? 0;
+      if (n >= allNewsPerSourceLimit) return false;
+      perSource[a.sourceName] = n + 1;
+      return true;
+    }).toList();
   }
+
+  static const allNewsPerSourceLimit = 15;
 
   DashboardState copyWith({
     bool? isLoading,

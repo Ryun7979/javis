@@ -11,7 +11,7 @@ import '../screens/settings_screen.dart';
 import '../util/app_clock.dart';
 import 'article_viewer.dart';
 
-/// ニュースフィード（総合＋ゲーム/AI/ITをタブ切り替え）。
+/// ニュースフィード（総合＋ゲーム/AI/IT/映画/アウトドアをタブ切り替え）。
 /// RSSは設定された間隔（既定30分）で自動的に再取得され、随時更新される。
 class NewsFeed extends ConsumerStatefulWidget {
   const NewsFeed({super.key});
@@ -232,6 +232,8 @@ class _CategoryChip extends StatelessWidget {
         NewsCategory.game => Colors.lightBlueAccent,
         NewsCategory.ai => Colors.purpleAccent,
         NewsCategory.it => Colors.greenAccent,
+        NewsCategory.movie => Colors.amberAccent,
+        NewsCategory.outdoor => Colors.lightGreenAccent,
       };
 
   @override

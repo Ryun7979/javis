@@ -145,7 +145,8 @@ class DashboardController extends StateNotifier<DashboardState> {
         if (bd == null) return -1;
         return bd.compareTo(ad);
       });
-      byCategory[category] = articles.take(30).toList();
+      // ゲームは配信元が多いので、各タブは新着50件まで持つ。
+      byCategory[category] = articles.take(50).toList();
       errors[category] = articles.isEmpty ? lastError : null;
     }
 

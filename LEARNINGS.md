@@ -284,3 +284,14 @@
   （全画面表示で踏んだ。Scaffoldを使わない画面では`ColoredBox`ではなく`Material(color: ...)`を使う）
 - 時計の背景は`ApodClockBackground`（間隔・不透明度・全画面の自動復帰時間・APIキーは設定画面）。
   切り替えの実機確認は設定で「1分ごと」を選んで約65秒待てば撮れる。
+
+## ニュースのジャンル追加（映画・アウトドア、ゲーム配信元の拡充、2026-09-27）
+
+- **RSS 1.0（RDF）の記事は`pubDate`がなく`dc:date`（ISO 8601）で日時を持つ。** 4Gamer・GAME Watch・Game*Spark・
+  cinemacafe が該当。以前は`pubDate`しか読まず日時なし→「総合」で常に最下段だった（4Gamerも実はこの状態だった）。
+  `NewsService.parseFeed`で`dc:date`も読むよう修正済み。新しい配信元を足すときは`curl`で日付タグの種類を先に確認する。
+- **既定の配信元は保存済み設定（Hive）に一覧ごと残るため、`defaultNewsSources`を変えても既存端末に反映されない。**
+  `currentNewsSourcesVersion`と`newsSourcesAddedByVersion`（`lib/data/default_news_sources.dart`）で版を管理し、
+  古い版の設定を読み込んだとき未登録の追加分だけ足す。既定の配信元を増やすときは版を上げて追加分を登録する。
+- **RSSが取れない配信元（2026-09-27時点）**: ファミ通・電撃オンライン（404）、映画.com（403）、シネマトゥデイ（404）、hinata（404）。
+- 「総合」は配信元ごとに新着15件まで（`DashboardState.allNewsPerSourceLimit`）、各ジャンルのタブは新着50件まで。

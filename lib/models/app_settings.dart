@@ -129,6 +129,7 @@ class AppSettings {
         'tideWeatherUpdateIntervalMinutes': tideWeatherUpdateIntervalMinutes,
         'newsUpdateIntervalMinutes': newsUpdateIntervalMinutes,
         'newsSources': newsSources.map((e) => e.toJson()).toList(),
+        'newsSourcesVersion': currentNewsSourcesVersion,
         'useFixedJst': useFixedJst,
         'dimBrightness': dimBrightness,
         'brightBrightness': brightBrightness,
@@ -146,9 +147,13 @@ class AppSettings {
         tideWeatherUpdateIntervalMinutes:
             json['tideWeatherUpdateIntervalMinutes'] as int,
         newsUpdateIntervalMinutes: json['newsUpdateIntervalMinutes'] as int,
-        newsSources: (json['newsSources'] as List)
-            .map((e) => NewsSource.fromJson(e as Map<String, dynamic>))
-            .toList(),
+        // 既定の配信元が増える前に保存された設定には、増えた分だけ追加する（版の記録がなければ版1）。
+        newsSources: migrateNewsSources(
+          (json['newsSources'] as List)
+              .map((e) => NewsSource.fromJson(e as Map<String, dynamic>))
+              .toList(),
+          json['newsSourcesVersion'] as int? ?? 1,
+        ),
         // 既存キャッシュ（フィールド追加前）との後方互換のため未設定時はtrue扱い。
         useFixedJst: json['useFixedJst'] as bool? ?? true,
         // 輝度設定の追加前に保存された設定では既定値を使う。

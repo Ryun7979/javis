@@ -1,10 +1,12 @@
-enum NewsCategory { game, ai, it }
+enum NewsCategory { game, ai, it, movie, outdoor }
 
 extension NewsCategoryLabel on NewsCategory {
   String get label => switch (this) {
         NewsCategory.game => 'ゲーム',
         NewsCategory.ai => 'AI',
         NewsCategory.it => 'IT',
+        NewsCategory.movie => '映画',
+        NewsCategory.outdoor => 'アウトドア',
       };
 }
 

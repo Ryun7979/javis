@@ -10,7 +10,7 @@ import 'cache_service.dart';
 /// RSSフィードを取得・解析するサービス。
 ///
 /// タイトル・リンク・配信元・時刻のみを保持し、本文の複製は行わない。
-/// RSS 2.0（`<item>`）とAtom（`<entry>`）の両方に対応する。
+/// RSS 1.0/2.0（`<item>`）とAtom（`<entry>`）に対応する。
 class NewsService {
   NewsService(this._cache, {http.Client? client})
       : _client = client ?? http.Client();
@@ -40,7 +40,7 @@ class NewsService {
           '${source.name}: HTTP ${res.statusCode}',
         );
       }
-      final articles = _parseFeed(utf8.decode(res.bodyBytes), source);
+      final articles = parseFeed(utf8.decode(res.bodyBytes), source);
       await _cache.writeJson(
         key,
         articles.map((e) => e.toJson()).toList(),
@@ -58,7 +58,7 @@ class NewsService {
       .map((e) => NewsArticle.fromJson(e as Map<String, dynamic>))
       .toList();
 
-  List<NewsArticle> _parseFeed(String body, NewsSource source) {
+  static List<NewsArticle> parseFeed(String body, NewsSource source) {
     final doc = XmlDocument.parse(body);
     final items = doc.findAllElements('item');
     if (items.isNotEmpty) {
@@ -68,26 +68,33 @@ class NewsService {
     return entries.map((entry) => _fromAtomEntry(entry, source)).toList();
   }
 
-  String _text(XmlElement parent, String tag) {
+  static String _text(XmlElement parent, String tag) {
     final el = parent.findElements(tag).firstOrNull;
     return el?.innerText.trim() ?? '';
   }
 
-  NewsArticle _fromRssItem(XmlElement item, NewsSource source) {
+  static NewsArticle _fromRssItem(XmlElement item, NewsSource source) {
     final title = _text(item, 'title');
     final link = _text(item, 'link');
     final pubDateStr = _text(item, 'pubDate');
+    DateTime? publishedAt;
+    if (pubDateStr.isNotEmpty) {
+      publishedAt = parseRfc822Date(pubDateStr);
+    } else {
+      // RSS 1.0（RDF）はpubDateがなく、Dublin Coreのdc:date（ISO 8601）で日時を持つ。
+      final dcDate = _text(item, 'dc:date');
+      if (dcDate.isNotEmpty) publishedAt = DateTime.tryParse(dcDate)?.toUtc();
+    }
     return NewsArticle(
       title: title,
       link: link,
       sourceName: source.name,
       category: source.category,
-      publishedAt:
-          pubDateStr.isEmpty ? null : parseRfc822Date(pubDateStr),
+      publishedAt: publishedAt,
     );
   }
 
-  NewsArticle _fromAtomEntry(XmlElement entry, NewsSource source) {
+  static NewsArticle _fromAtomEntry(XmlElement entry, NewsSource source) {
     final title = _text(entry, 'title');
     final linkEl = entry.findElements('link').firstOrNull;
     final link = linkEl?.getAttribute('href') ?? linkEl?.innerText.trim() ?? '';
