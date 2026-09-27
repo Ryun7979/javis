@@ -15,6 +15,10 @@ class AppSettings {
     required this.brightBrightness,
     required this.articleAutoCloseMinutes,
     required this.panelSwitchIntervalMinutes,
+    required this.apodSwitchIntervalMinutes,
+    required this.apodBackgroundOpacity,
+    required this.apodFullscreenAutoCloseMinutes,
+    required this.nasaApiKey,
   });
 
   final LocationPoint location;
@@ -48,6 +52,24 @@ class AppSettings {
 
   static const defaultPanelSwitchIntervalMinutes = 10;
 
+  /// 時計の背景を「グリッド⇔NASAの宇宙写真」で切り替える間隔（分）。0 のときは切り替えずグリッドのまま。
+  final int apodSwitchIntervalMinutes;
+
+  static const defaultApodSwitchIntervalMinutes = 15;
+
+  /// 時計の背景に写真を出すときの写真の不透明度（0.0〜1.0）。時計が読みにくくならないよう低めにする。
+  final double apodBackgroundOpacity;
+
+  static const defaultApodBackgroundOpacity = 0.35;
+
+  /// 写真の全画面表示を、タッチされなくても自動で閉じるまでの時間（分）。静止画の焼き付き対策。
+  final int apodFullscreenAutoCloseMinutes;
+
+  static const defaultApodFullscreenAutoCloseMinutes = 10;
+
+  /// NASA APIキー。空のときは共用の DEMO_KEY を使う（端末内のHiveにだけ保存される）。
+  final String nasaApiKey;
+
   static AppSettings defaults() => AppSettings(
         location: observationPoints.first,
         tideWeatherUpdateIntervalMinutes: 30,
@@ -58,6 +80,10 @@ class AppSettings {
         brightBrightness: defaultBrightBrightness,
         articleAutoCloseMinutes: defaultArticleAutoCloseMinutes,
         panelSwitchIntervalMinutes: defaultPanelSwitchIntervalMinutes,
+        apodSwitchIntervalMinutes: defaultApodSwitchIntervalMinutes,
+        apodBackgroundOpacity: defaultApodBackgroundOpacity,
+        apodFullscreenAutoCloseMinutes: defaultApodFullscreenAutoCloseMinutes,
+        nasaApiKey: '',
       );
 
   AppSettings copyWith({
@@ -70,6 +96,10 @@ class AppSettings {
     double? brightBrightness,
     int? articleAutoCloseMinutes,
     int? panelSwitchIntervalMinutes,
+    int? apodSwitchIntervalMinutes,
+    double? apodBackgroundOpacity,
+    int? apodFullscreenAutoCloseMinutes,
+    String? nasaApiKey,
   }) =>
       AppSettings(
         location: location ?? this.location,
@@ -85,6 +115,13 @@ class AppSettings {
             articleAutoCloseMinutes ?? this.articleAutoCloseMinutes,
         panelSwitchIntervalMinutes:
             panelSwitchIntervalMinutes ?? this.panelSwitchIntervalMinutes,
+        apodSwitchIntervalMinutes:
+            apodSwitchIntervalMinutes ?? this.apodSwitchIntervalMinutes,
+        apodBackgroundOpacity:
+            apodBackgroundOpacity ?? this.apodBackgroundOpacity,
+        apodFullscreenAutoCloseMinutes: apodFullscreenAutoCloseMinutes ??
+            this.apodFullscreenAutoCloseMinutes,
+        nasaApiKey: nasaApiKey ?? this.nasaApiKey,
       );
 
   Map<String, dynamic> toJson() => {
@@ -97,6 +134,10 @@ class AppSettings {
         'brightBrightness': brightBrightness,
         'articleAutoCloseMinutes': articleAutoCloseMinutes,
         'panelSwitchIntervalMinutes': panelSwitchIntervalMinutes,
+        'apodSwitchIntervalMinutes': apodSwitchIntervalMinutes,
+        'apodBackgroundOpacity': apodBackgroundOpacity,
+        'apodFullscreenAutoCloseMinutes': apodFullscreenAutoCloseMinutes,
+        'nasaApiKey': nasaApiKey,
       };
 
   factory AppSettings.fromJson(Map<String, dynamic> json) => AppSettings(
@@ -121,5 +162,15 @@ class AppSettings {
         // 釣り情報/雨雲レーダー切り替えの追加前に保存された設定では既定値を使う。
         panelSwitchIntervalMinutes: json['panelSwitchIntervalMinutes'] as int? ??
             defaultPanelSwitchIntervalMinutes,
+        // NASAの宇宙写真の追加前に保存された設定では既定値を使う。
+        apodSwitchIntervalMinutes: json['apodSwitchIntervalMinutes'] as int? ??
+            defaultApodSwitchIntervalMinutes,
+        apodBackgroundOpacity:
+            (json['apodBackgroundOpacity'] as num?)?.toDouble() ??
+                defaultApodBackgroundOpacity,
+        apodFullscreenAutoCloseMinutes:
+            json['apodFullscreenAutoCloseMinutes'] as int? ??
+                defaultApodFullscreenAutoCloseMinutes,
+        nasaApiKey: json['nasaApiKey'] as String? ?? '',
       );
 }

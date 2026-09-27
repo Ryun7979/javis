@@ -273,3 +273,14 @@
   `encodeURIComponent` を使う。
 - **表示は時計の下の `WikiTriviaTicker`（高さ28の1行固定）。** 収まる文は10秒表示、収まらない文は2.5秒止めてから
   60px/秒でスクロールし、末尾でも2.5秒止めてから次の項目へ進む（`SingleChildScrollView` + `animateTo`）。
+
+## NASA APOD（時計の背景・全画面表示、2026-09-27）
+
+- **APOD APIは日付指定なし＋`thumbs=true`で最新1件を取る。** `media_type`が`video`の日は`thumbnail_url`、
+  サムネイルも無い日（`other`等）は前回の写真を使い続ける（`NasaApodService.parseResponse`）。`DEMO_KEY`の
+  上限は実測で1時間10回（`X-Ratelimit-Limit`）なので、3時間TTLのHiveキャッシュ＋1時間ごとの確認にした。
+  `hdurl`は4000px超・数MBになるので、全画面は`ResizeImage(policy: fit)`で画面の実ピクセルに縮めてデコードする。
+- **`PageRouteBuilder`で直に出す画面は`Material`で包まないとTextが黄色の二重下線＋既定外フォントになる。**
+  （全画面表示で踏んだ。Scaffoldを使わない画面では`ColoredBox`ではなく`Material(color: ...)`を使う）
+- 時計の背景は`ApodClockBackground`（間隔・不透明度・全画面の自動復帰時間・APIキーは設定画面）。
+  切り替えの実機確認は設定で「1分ごと」を選んで約65秒待てば撮れる。

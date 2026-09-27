@@ -64,6 +64,51 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 24),
+          Text('時計の背景（NASAの宇宙写真）', style: Theme.of(context).textTheme.titleMedium),
+          _IntervalDropdown(
+            value: settings.apodSwitchIntervalMinutes,
+            options: const [1, 5, 10, 15, 30, 60, 0],
+            label: (m) => m == 0
+                ? '切り替えない（グリッドのまま・全画面ボタンのみ）'
+                : '$m分ごとにグリッドと写真を切り替える',
+            onChanged: (v) => notifier.update(
+              settings.copyWith(apodSwitchIntervalMinutes: v),
+            ),
+          ),
+          _PercentSlider(
+            label: '写真の不透明度',
+            value: settings.apodBackgroundOpacity,
+            min: 0.1,
+            max: 0.8,
+            onChangeEnd: (v) =>
+                notifier.update(settings.copyWith(apodBackgroundOpacity: v)),
+          ),
+          _IntervalDropdown(
+            value: settings.apodFullscreenAutoCloseMinutes,
+            options: const [1, 3, 5, 10, 30],
+            label: (m) => '全画面表示は$m分で自動的に戻る',
+            onChanged: (v) => notifier.update(
+              settings.copyWith(apodFullscreenAutoCloseMinutes: v),
+            ),
+          ),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.key),
+            title: const Text('NASA APIキー（任意）'),
+            subtitle: Text(
+              settings.nasaApiKey.isEmpty
+                  ? '未設定（共用のDEMO_KEYを使用）'
+                  : '設定済み（末尾 ${_keyTail(settings.nasaApiKey)}）',
+            ),
+            trailing: const Icon(Icons.edit),
+            onTap: () async {
+              final key = await _showApiKeyDialog(context, settings.nasaApiKey);
+              if (key != null) {
+                notifier.update(settings.copyWith(nasaApiKey: key));
+              }
+            },
+          ),
+          const SizedBox(height: 24),
           Text('ニュース記事を自動で閉じるまでの時間', style: Theme.of(context).textTheme.titleMedium),
           _IntervalDropdown(
             value: settings.articleAutoCloseMinutes,
@@ -88,7 +133,7 @@ class SettingsScreen extends ConsumerWidget {
             'バッテリー駆動中は本体の明るさ設定に従います',
             style: TextStyle(fontSize: 12, color: Colors.white54),
           ),
-          _BrightnessSlider(
+          _PercentSlider(
             label: '暗い状態（2:00〜19:00）',
             value: settings.dimBrightness,
             onPreview: (v) => ref
@@ -97,7 +142,7 @@ class SettingsScreen extends ConsumerWidget {
             onChangeEnd: (v) =>
                 notifier.update(settings.copyWith(dimBrightness: v)),
           ),
-          _BrightnessSlider(
+          _PercentSlider(
             label: '明るい状態（19:00〜翌2:00）',
             value: settings.brightBrightness,
             onPreview: (v) => ref
@@ -147,11 +192,51 @@ class SettingsScreen extends ConsumerWidget {
             contentPadding: EdgeInsets.zero,
             leading: const Icon(Icons.info_outline),
             title: const Text('データの出典・利用規約'),
-            subtitle: const Text('気象庁・国土地理院・Open-Meteo・ニュース配信元'),
+            subtitle: const Text('気象庁・国土地理院・Open-Meteo・Wikipedia・NASA・ニュース配信元'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const AttributionScreen()),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static String _keyTail(String key) =>
+      key.length <= 4 ? key : key.substring(key.length - 4);
+
+  /// APIキーの入力ダイアログ。空にして保存すると DEMO_KEY に戻る。キャンセル時は null。
+  Future<String?> _showApiKeyDialog(BuildContext context, String current) {
+    final controller = TextEditingController(text: current);
+    return showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('NASA APIキー'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'api.nasa.gov で無料発行できます。空欄なら共用のDEMO_KEYを使います。',
+              style: TextStyle(fontSize: 12, color: Colors.white54),
+            ),
+            TextField(
+              controller: controller,
+              autocorrect: false,
+              enableSuggestions: false,
+              decoration: const InputDecoration(labelText: 'APIキー'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('キャンセル'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(controller.text.trim()),
+            child: const Text('保存'),
           ),
         ],
       ),
@@ -247,33 +332,37 @@ class _IntervalDropdown extends StatelessWidget {
   }
 }
 
-/// 輝度（5%〜100%、5%刻み）を指定するスライダー。
+/// 割合（既定は輝度用の5%〜100%、5%刻み）を指定するスライダー。
 /// ドラッグ中は[onPreview]で画面へ即時反映し、指を離した時点で[onChangeEnd]により保存する。
-class _BrightnessSlider extends StatefulWidget {
-  const _BrightnessSlider({
+class _PercentSlider extends StatefulWidget {
+  const _PercentSlider({
     required this.label,
     required this.value,
-    required this.onPreview,
+    this.onPreview,
     required this.onChangeEnd,
+    this.min = 0.05,
+    this.max = 1.0,
   });
 
   final String label;
   final double value;
-  final ValueChanged<double> onPreview;
+  final ValueChanged<double>? onPreview;
   final ValueChanged<double> onChangeEnd;
+  final double min;
+  final double max;
 
   @override
-  State<_BrightnessSlider> createState() => _BrightnessSliderState();
+  State<_PercentSlider> createState() => _PercentSliderState();
 }
 
-class _BrightnessSliderState extends State<_BrightnessSlider> {
-  static const _min = 0.05;
-  static const _max = 1.0;
+class _PercentSliderState extends State<_PercentSlider> {
+  double get _min => widget.min;
+  double get _max => widget.max;
 
   late double _value = widget.value.clamp(_min, _max);
 
   @override
-  void didUpdateWidget(_BrightnessSlider oldWidget) {
+  void didUpdateWidget(_PercentSlider oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.value != widget.value) {
       _value = widget.value.clamp(_min, _max);
@@ -290,12 +379,12 @@ class _BrightnessSliderState extends State<_BrightnessSlider> {
             value: _value,
             min: _min,
             max: _max,
-            // 5%刻み（0.05〜1.0で19分割）。
-            divisions: 19,
+            // 5%刻み（輝度の0.05〜1.0なら19分割）。
+            divisions: ((_max - _min) / 0.05).round(),
             label: '${(_value * 100).round()}%',
             onChanged: (v) {
               setState(() => _value = v);
-              widget.onPreview(v);
+              widget.onPreview?.call(v);
             },
             onChangeEnd: widget.onChangeEnd,
           ),
