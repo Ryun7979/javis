@@ -5,7 +5,8 @@ import '../providers/settings_provider.dart';
 
 /// アプリが利用している外部データの出典・利用条件の一覧。
 ///
-/// 気象庁（政府標準利用規約）・国土地理院（地理院タイル）・Open-Meteo（CC BY 4.0）は
+/// 気象庁（政府標準利用規約）・国土地理院（地理院タイル）・Open-Meteo（CC BY 4.0）・
+/// Wikipedia（CC BY-SA 4.0）は
 /// いずれも出典の表示を利用条件としているため、設定画面からいつでも確認できるようにしている。
 class AttributionScreen extends ConsumerWidget {
   const AttributionScreen({super.key});
@@ -63,6 +64,22 @@ class AttributionScreen extends ConsumerWidget {
             links: [
               'https://open-meteo.com/',
               'https://creativecommons.org/licenses/by/4.0/',
+            ],
+          ),
+          const _Section(
+            title: 'Wikipedia',
+            credit: '出典：フリー百科事典『ウィキペディア（Wikipedia）』',
+            usages: [
+              '時計の下の「今日は何の日」（Wikipedia:今日は何の日）',
+              '時計の下の「秀逸な記事」（その日の秀逸な記事の冒頭1文）',
+            ],
+            notes: [
+              'テキストは CC BY-SA 4.0 ライセンスで提供されています。',
+              '1行表示のため、リンクや脚注などの記法を取り除いて表示しています。',
+            ],
+            links: [
+              'https://ja.wikipedia.org/',
+              'https://creativecommons.org/licenses/by-sa/4.0/deed.ja',
             ],
           ),
           _Section(

@@ -259,3 +259,17 @@
   → 予報は N2 の最新basetimeを使い、最新実況より後のvalidtimeだけ採る。
 - **出典表記は設定画面→「データの出典・利用規約」（`AttributionScreen`）と、レーダー右下の小さな表記。**
   地理院タイルは色を反転・減光しているので「加工して作成」と明記している。
+
+## Wikipediaの小ネタ表示（2026-09-27）
+
+- **日本語版は Wikimedia の onthisday フィードが未対応（404 "language not yet supported"）。** 代わりに
+  メインページの元データ `Wikipedia:今日は何の日 n月`（MediaWiki `action=parse&prop=wikitext`）の
+  `== [[m月d日]] ==` 節を使う（1日10〜15件の厳選された短文）。秀逸な記事は
+  `ja.wikipedia.org/api/rest_v1/feed/featured/YYYY/MM/DD` の `tfa.extract` の1文目。
+  整形は `WikipediaService.cleanWikitext`。12か月分・4658件の実データで記法の残りがゼロになることを確認済み
+  （`&nbsp;` だけ残っていたので実体参照も戻している）。
+- **GitBashのcurlに日本語のクエリを直接渡すと文字コードが崩れて `missingtitle` になる。** アプリ（Dartの
+  `Uri.https`）では問題ない。PC側で試すときは%エンコード済みのURLを使うか、Nodeの `fetch` +
+  `encodeURIComponent` を使う。
+- **表示は時計の下の `WikiTriviaTicker`（高さ28の1行固定）。** 収まる文は10秒表示、収まらない文は2.5秒止めてから
+  60px/秒でスクロールし、末尾でも2.5秒止めてから次の項目へ進む（`SingleChildScrollView` + `animateTo`）。

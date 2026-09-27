@@ -6,6 +6,7 @@ import '../services/news_service.dart';
 import '../services/rain_radar_service.dart';
 import '../services/tide_service.dart';
 import '../services/weather_service.dart';
+import '../services/wikipedia_service.dart';
 
 /// main() で CacheService.open() の結果を override して差し込む。
 final cacheServiceProvider = Provider<CacheService>(
@@ -30,4 +31,8 @@ final rainRadarServiceProvider = Provider<RainRadarService>(
 
 final fishingScoreServiceProvider = Provider<FishingScoreService>(
   (ref) => FishingScoreService(),
+);
+
+final wikipediaServiceProvider = Provider<WikipediaService>(
+  (ref) => WikipediaService(ref.watch(cacheServiceProvider)),
 );
