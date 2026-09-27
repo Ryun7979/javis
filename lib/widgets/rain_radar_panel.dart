@@ -46,11 +46,20 @@ class _RainRadarPanelState extends ConsumerState<RainRadarPanel> {
   /// 広域表示（地方全体）と現状の縮尺を切り替えるときのフェード時間。
   static const _viewFade = Duration(milliseconds: 500);
 
+  /// フェードで縮尺を切り替え終えてから、先頭のコマに戻すまでの間。
+  static const _holdAfterFade = Duration(milliseconds: 600);
+
+  /// 同じ縮尺で何回再生してから縮尺を切り替えるか。
+  static const _playsPerScale = 2;
+
   List<RadarFrame> _frames = const [];
   int _index = 0;
 
-  /// true なら釣り場を含む地方全体を見渡す広域表示。アニメーションが一巡するたびに切り替える。
+  /// true なら釣り場を含む地方全体を見渡す広域表示。同じ縮尺で[_playsPerScale]回再生するたびに切り替える。
   bool _wide = false;
+
+  /// 今の縮尺で最後のコマまで再生し終えた回数。
+  int _playsAtScale = 0;
   String? _error;
   bool _loading = true;
   Timer? _refreshTimer;
@@ -103,10 +112,22 @@ class _RainRadarPanelState extends ConsumerState<RainRadarPanel> {
             : _frameDuration;
     _frameTimer = Timer(hold, () {
       if (!mounted) return;
-      setState(() {
-        _index = (_index + 1) % _frames.length;
-        if (_index == 0) _wide = !_wide;
-      });
+      final atEnd = _index == _frames.length - 1;
+      if (atEnd && ++_playsAtScale >= _playsPerScale) {
+        // 巻き戻しとフェードが重なるとせわしなく見えるため、最終コマのまま縮尺を切り替え、
+        // フェードが終わって少し置いてから先頭に戻して再生する。
+        setState(() {
+          _wide = !_wide;
+          _playsAtScale = 0;
+        });
+        _frameTimer = Timer(_viewFade + _holdAfterFade, () {
+          if (!mounted) return;
+          setState(() => _index = 0);
+          _scheduleNextFrame();
+        });
+        return;
+      }
+      setState(() => _index = atEnd ? 0 : _index + 1);
       _scheduleNextFrame();
     });
   }
@@ -272,6 +293,15 @@ class _RadarMap extends StatelessWidget {
     0, 0, 0, 1, 0, //
   ]);
 
+  /// 白地図（白地に灰色#444の線）を、白は透明・線は半透明の明るい灰色にする。
+  /// 線の不透明度は約45%（暗い地図の上で「少しだけ明るく」見える程度）。
+  static const _wideOutlineFilter = ColorFilter.matrix([
+    0, 0, 0, 0, 140, //
+    0, 0, 0, 0, 165, //
+    0, 0, 0, 0, 180, //
+    -0.62, 0, 0, 0, 158, //
+  ]);
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
@@ -381,6 +411,20 @@ class _RadarMap extends StatelessWidget {
                   child: Stack(
                     children: tileLayer(
                       (t) => RainRadarService.radarTileUrl(frames[i], t),
+                    ),
+                  ),
+                ),
+              ),
+            // 淡色地図の海岸線は暗く細くて見えにくいため、白地図（海岸線と都道府県境だけの地図）の線を
+            // 明るい灰色にして雨雲の上に重ねる。白地図では海岸線と県境が同じ色で区別できないので、
+            // 県境も同じように明るくなる。
+            Positioned.fill(
+                child: ColorFiltered(
+                  colorFilter: _wideOutlineFilter,
+                  child: Stack(
+                    children: tileLayer(
+                      (t) => 'https://cyberjapandata.gsi.go.jp/xyz/blank/'
+                          '${t.z}/${t.x}/${t.y}.png',
                     ),
                   ),
                 ),

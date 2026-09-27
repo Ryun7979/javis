@@ -44,9 +44,13 @@ class AttributionScreen extends ConsumerWidget {
           const _Section(
             title: '国土地理院',
             credit: '出典：国土地理院（地理院タイル）',
-            usages: ['雨雲レーダーの背景地図（淡色地図）'],
+            usages: [
+              '雨雲レーダーの背景地図（淡色地図）',
+              '雨雲レーダーの海岸線・都道府県境（白地図）',
+            ],
             notes: [
-              '地理院タイルを加工して作成（ダークテーマに合わせて色を反転・減光）。',
+              '地理院タイルを加工して作成（ダークテーマに合わせて色を反転・減光、'
+                  '白地図は線だけを明るい灰色にして重ね合わせ）。',
             ],
             links: ['https://maps.gsi.go.jp/development/ichiran.html'],
           ),
