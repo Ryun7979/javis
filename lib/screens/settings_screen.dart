@@ -5,7 +5,9 @@ import '../data/observation_points.dart';
 import '../data/prefectures.dart';
 import '../models/news_models.dart';
 import '../providers/brightness_controller.dart';
+import '../providers/keep_awake_controller.dart';
 import '../providers/settings_provider.dart';
+import '../util/keep_awake_schedule.dart';
 import 'attribution_screen.dart';
 import 'capital_marker_settings_screen.dart';
 
@@ -186,6 +188,38 @@ class SettingsScreen extends ConsumerWidget {
                 notifier.update(settings.copyWith(brightBrightness: v)),
           ),
           const SizedBox(height: 24),
+          Text('画面の常時点灯', style: Theme.of(context).textTheme.titleMedium),
+          Text(
+            '時間帯の外は本体の「画面消灯」の設定に従って消えます（開始時刻に自動では点灯しません）。'
+            '開始が終了より遅いときは翌日まで続きます。祝日は曜日どおりです。'
+            '　現在: ${ref.watch(keepAwakeControllerProvider) ? '常時点灯中' : '本体の設定に従う'}',
+            style: const TextStyle(fontSize: 12, color: Colors.white54),
+          ),
+          for (final (label, day, apply) in [
+            (
+              '平日',
+              settings.keepAwakeSchedule.weekday,
+              (KeepAwakeDay d) => settings.keepAwakeSchedule.copyWith(weekday: d)
+            ),
+            (
+              '土曜',
+              settings.keepAwakeSchedule.saturday,
+              (KeepAwakeDay d) =>
+                  settings.keepAwakeSchedule.copyWith(saturday: d)
+            ),
+            (
+              '日曜',
+              settings.keepAwakeSchedule.sunday,
+              (KeepAwakeDay d) => settings.keepAwakeSchedule.copyWith(sunday: d)
+            ),
+          ])
+            _KeepAwakeDayRow(
+              label: label,
+              day: day,
+              onChanged: (d) => notifier
+                  .update(settings.copyWith(keepAwakeSchedule: apply(d))),
+            ),
+          const SizedBox(height: 24),
           Row(
             children: [
               Text('ニュース配信元', style: Theme.of(context).textTheme.titleMedium),
@@ -362,6 +396,84 @@ class _IntervalDropdown extends StatelessWidget {
       onChanged: (v) {
         if (v != null) onChanged(v);
       },
+    );
+  }
+}
+
+/// 1日分（平日・土曜・日曜のどれか）の常時点灯の時間帯を指定する行。
+class _KeepAwakeDayRow extends StatelessWidget {
+  const _KeepAwakeDayRow({
+    required this.label,
+    required this.day,
+    required this.onChanged,
+  });
+
+  final String label;
+  final KeepAwakeDay day;
+  final ValueChanged<KeepAwakeDay> onChanged;
+
+  static String _format(int minute) =>
+      '${minute ~/ 60}:${(minute % 60).toString().padLeft(2, '0')}';
+
+  Future<void> _pickTime(BuildContext context, {required bool start}) async {
+    final current = start ? day.startMinute : day.endMinute;
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(hour: current ~/ 60, minute: current % 60),
+      helpText: '$label の${start ? '開始' : '終了'}時刻',
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+        child: child!,
+      ),
+    );
+    if (picked == null) return;
+    final minute = picked.hour * 60 + picked.minute;
+    onChanged(start
+        ? day.copyWith(startMinute: minute)
+        : day.copyWith(endMinute: minute));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isRange = day.mode == KeepAwakeMode.range;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          SizedBox(width: 56, child: Text(label)),
+          SegmentedButton<KeepAwakeMode>(
+            segments: [
+              for (final m in KeepAwakeMode.values)
+                ButtonSegment(value: m, label: Text(m.label)),
+            ],
+            selected: {day.mode},
+            showSelectedIcon: false,
+            onSelectionChanged: (s) => onChanged(day.copyWith(mode: s.first)),
+          ),
+          const SizedBox(width: 16),
+          if (isRange) ...[
+            OutlinedButton(
+              onPressed: () => _pickTime(context, start: true),
+              child: Text(_format(day.startMinute)),
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 8),
+              child: Text('〜'),
+            ),
+            OutlinedButton(
+              onPressed: () => _pickTime(context, start: false),
+              child: Text(
+                  '${day.crossesMidnight ? '翌' : ''}${_format(day.endMinute)}'),
+            ),
+            if (day.startMinute == day.endMinute)
+              const Padding(
+                padding: EdgeInsets.only(left: 8),
+                child: Text('開始と終了が同じため点灯しません',
+                    style: TextStyle(fontSize: 12, color: Colors.orangeAccent)),
+              ),
+          ],
+        ],
+      ),
     );
   }
 }

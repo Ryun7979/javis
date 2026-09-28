@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/brightness_controller.dart';
 import '../providers/dashboard_controller.dart';
+import '../providers/keep_awake_controller.dart';
 import '../theme/cyberpunk_colors.dart';
 import '../widgets/apod_clock_background.dart';
 import '../widgets/clock_widget.dart';
@@ -29,6 +30,8 @@ class DashboardScreen extends ConsumerWidget {
     final state = ref.watch(dashboardControllerProvider);
     // 時間帯・電源状態に応じた輝度制御を、ダッシュボード表示中は常に動かしておく。
     ref.watch(brightnessControllerProvider);
+    // 設定した時間帯だけ常時点灯にする制御も、同じく表示中は常に動かしておく。
+    ref.watch(keepAwakeControllerProvider);
 
     return Scaffold(
       backgroundColor: Colors.transparent,

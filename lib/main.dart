@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:workmanager/workmanager.dart';
 
 import 'background/workmanager_callback.dart';
@@ -13,8 +12,7 @@ import 'theme/cyberpunk_colors.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 常時点灯キオスク運用のため、起動直後から画面スリープを禁止する。
-  await WakelockPlus.enable();
+  // 常時点灯は設定した時間帯だけ（KeepAwakeController）。焼き付き防止と節電のため起動時には点灯を固定しない。
 
   // 卓上設置を想定し、ランドスケープ固定・全画面表示にする。
   await SystemChrome.setPreferredOrientations([

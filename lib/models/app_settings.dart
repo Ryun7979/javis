@@ -2,6 +2,7 @@ import '../data/default_news_sources.dart';
 import '../data/observation_points.dart';
 import '../data/prefectures.dart';
 import '../util/brightness_schedule.dart';
+import '../util/keep_awake_schedule.dart';
 import 'location_point.dart';
 import 'news_models.dart';
 
@@ -22,6 +23,7 @@ class AppSettings {
     required this.apodFullscreenAutoCloseMinutes,
     required this.nasaApiKey,
     required this.capitalMarkerPrefectures,
+    required this.keepAwakeSchedule,
   });
 
   final LocationPoint location;
@@ -82,6 +84,9 @@ class AppSettings {
   /// 雨雲レーダーに県庁所在地のマーク（マゼンタ）を出す都道府県のコード（JIS X 0401）。
   final Set<int> capitalMarkerPrefectures;
 
+  /// 画面を常時点灯にする時間帯（平日・土曜・日曜で個別）。時間帯の外は本体の消灯設定に従う。
+  final KeepAwakeSchedule keepAwakeSchedule;
+
   static AppSettings defaults() => AppSettings(
         location: observationPoints.first,
         tideWeatherUpdateIntervalMinutes: 30,
@@ -98,6 +103,7 @@ class AppSettings {
         apodFullscreenAutoCloseMinutes: defaultApodFullscreenAutoCloseMinutes,
         nasaApiKey: '',
         capitalMarkerPrefectures: allPrefectureCodes,
+        keepAwakeSchedule: KeepAwakeSchedule.defaults,
       );
 
   AppSettings copyWith({
@@ -116,6 +122,7 @@ class AppSettings {
     int? apodFullscreenAutoCloseMinutes,
     String? nasaApiKey,
     Set<int>? capitalMarkerPrefectures,
+    KeepAwakeSchedule? keepAwakeSchedule,
   }) =>
       AppSettings(
         location: location ?? this.location,
@@ -142,6 +149,7 @@ class AppSettings {
         nasaApiKey: nasaApiKey ?? this.nasaApiKey,
         capitalMarkerPrefectures:
             capitalMarkerPrefectures ?? this.capitalMarkerPrefectures,
+        keepAwakeSchedule: keepAwakeSchedule ?? this.keepAwakeSchedule,
       );
 
   Map<String, dynamic> toJson() => {
@@ -161,6 +169,7 @@ class AppSettings {
         'apodFullscreenAutoCloseMinutes': apodFullscreenAutoCloseMinutes,
         'nasaApiKey': nasaApiKey,
         'capitalMarkerPrefectures': capitalMarkerPrefectures.toList()..sort(),
+        'keepAwakeSchedule': keepAwakeSchedule.toJson(),
       };
 
   factory AppSettings.fromJson(Map<String, dynamic> json) => AppSettings(
@@ -210,5 +219,10 @@ class AppSettings {
         capitalMarkerPrefectures:
             (json['capitalMarkerPrefectures'] as List?)?.cast<int>().toSet() ??
                 allPrefectureCodes,
+        // 常時点灯の時間帯の追加前に保存された設定では、今までどおり終日点灯にする。
+        keepAwakeSchedule: json['keepAwakeSchedule'] is Map<String, dynamic>
+            ? KeepAwakeSchedule.fromJson(
+                json['keepAwakeSchedule'] as Map<String, dynamic>)
+            : KeepAwakeSchedule.defaults,
       );
 }
