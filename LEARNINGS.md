@@ -109,13 +109,13 @@
   パッケージ名は当初`fishing_dashboard`という仮称で作ったが、ユーザー指定により`wall_jarvis`へ変更
   （applicationId: `com.nadaryu.wall_jarvis`）。名前変更は生成物を全削除してから`flutter create`を
   再実行する方式で対応した（コミット前だったので安全に一括作り直しができた）。
-  `flutter analyze`・`flutter test`とも初期状態でPASS。まだ実機/エミュレータでの起動確認はしていない。
+  `flutter analyze`・`flutter test`とも初期状態でPASS。
 - **釣り・ニュース・時計ダッシュボード本体を実装済み（2026-09-23）。** 潮汐は気象庁の潮位表テキスト
   （観測地点コードは横浜=`QS`。似た名前の`YK`=京浜港は別地点なので混同注意、
   `lib/data/observation_points.dart`に地点一覧）、天気はOpen-Meteo（APIキー不要）、ニュースはRSS
   （既定: 4Gamer.net/ITmedia AI+/ITmedia NEWS）。状態管理はRiverpod（`legacy.dart`の
   StateNotifierProvider）、キャッシュはHive（JSON文字列保存、TypeAdapter不使用）、画面常時点灯は
-  wakelock_plus、バックグラウンド補助更新にworkmanager。実機的な検証は
+  wakelock_plus（2026-09-29から時間帯指定、末尾の節参照）、バックグラウンド補助更新にworkmanager。実機的な検証は
   Androidエミュレータで`flutter build apk --debug`→`adb install`→起動確認まで実施し、時計・潮汐グラフ・
   天気・釣りやすさスコア（★表示＋内訳）・ニュース3タブ・設定画面すべてスクリーンショットで動作確認済み。
   「Lock Task Mode」（true kiosk化）はDevice Owner登録が要るため未実装（Open Questions参照）。
@@ -174,29 +174,16 @@
   Android優先のため後回しにした。デスクトップ版も出す判断になったら導入する。
 - Android Lock Task Mode（画面ピン留め・誤操作防止の本格キオスク化）は未実装。Device Owner登録
   （`dpm set-device-owner`、通常は端末初期セットアップ時のみ可能）が前提になるため、対象タブレット確定後に
-  改めて着手要否を判断する。現状は全画面表示＋wakelock_plusによる常時点灯のみ対応。
-- ニュースの自動スクロール/切り替え表示オプション（仕様書「検討」扱い）は未実装。タブ切り替え＋
-  縦スクロールリストのみ。常時無人稼働時に定期スクロールが欲しくなったら追加検討。
+  改めて着手要否を判断する。現状は全画面表示＋wakelock_plusによる時間帯指定の常時点灯のみ対応。
+- 【解決済み】ニュースの自動スクロール/切り替え表示（仕様書「検討」扱い）。2026-09-27に自動ページ送りとして実装済み
+  （「ニュースの注目度順・自動ページ送り」の節参照）。
 - 【解決済み】Android実機またはエミュレータでの`flutter run`確認（2026-09-23）。PC上のAndroidエミュレータで
   `wall_jarvis`（初期状態のカウンターアプリ）の起動を確認済み。詳細は Domain Knowledge 参照。
 
 ## PCエミュレータ環境（2026-09-23構築）
 
-- **導入パッケージ**: `emulator`（37.1.11）、`system-images;android-36;google_apis;x86_64`（API 37.1向けの
-  エミュレータ用システムイメージは本日時点で未配布のため、次点の android-36 を採用）。
-  `sdkmanager <pkg1> <pkg2>` にYes応答をパイプすれば非対話でインストールできる（既存パターンの応用）。
-- **AVD**: 名前`wall_jarvis_tablet`、デバイスプロファイル`pixel_tablet`（卓上キオスクのタブレット用途に近い）。
-  `avdmanager create avd -n <name> -k <system-image> -d pixel_tablet` で作成。
-  実行時に`Could not load devices from ...\system-images\...\devices.xml`という警告が出るが無害
-  （`avdmanager list avd`で正常に一覧に出る）。次回同じ警告が出ても慌てず一覧で確認すればよい。
-- **アクセラレーション**: Windows Hypervisor Platform (WHPX) が有効で`emulator -accel-check`もOK。
-  追加設定不要だった。
-- **起動確認**: `emulator -avd wall_jarvis_tablet` → `adb shell getprop sys.boot_completed`が`1`になるまで
-  待てば起動完了が機械的に判定できる。その後`flutter run -d emulator-5554`でビルド→インストール→起動まで成功、
-  `flutter analyze`/`flutter test`もPASSのまま（初回Gradleビルドは約5分、Android SDK Build-Tools 36と
-  Platform 36の追加ダウンロードが自動発生した）。
-- **次回のエミュレータ起動**: SDK類は導入済みなので、`emulator -avd wall_jarvis_tablet`だけで起動できる
-  （PATHに`%LOCALAPPDATA%\Android\sdk\emulator`を通しておくと`emulator`コマンドが直接使える）。
+- AVD `wall_jarvis_tablet`（pixel_tablet, android-36）。起動は `emulator -avd wall_jarvis_tablet`、完了判定は
+  `adb shell getprop sys.boot_completed` が `1`。導入手順と実測値は `docs/2026-09-29-エミュレータ環境.md` に切り出した。
 
 ## Consolidated Principles 統合した原則
 <!-- 個別事例から抽出した、広く通用する判断基準 -->
@@ -333,3 +320,11 @@
   道路・文字も似た灰色なので色変換では海岸線だけを明るくできない。そこで広域表示だけ、地理院の白地図
   （`xyz/blank`、z5〜で取得可。海岸線と都道府県境だけが`#444444`で描かれている）を「白→透明、線→明るい灰色45%」の
   `ColorFilter`で雨雲の上に重ねた。海岸線と県境は同じ色なので、県境も一緒に明るくなる。好評だったので現状の縮尺（z8）にも同じ線を重ねている。
+
+## 常時点灯の時間帯指定（2026-09-29）
+
+- **常時点灯は起動時の固定をやめ、`KeepAwakeController`が毎分0秒に`AppSettings.keepAwakeSchedule`（平日・土・日で個別、終日/時間指定/なし）を
+  判定して`WakelockPlus.toggle`する**（判定は`lib/util/keep_awake_schedule.dart`）。時間帯の外は本体の画面消灯設定に従う。開始が終了より遅いと翌日まで続き、
+  はみ出し分も開始日の設定に従う。祝日は曜日どおり、開始時刻に画面を自動でつけ直すことはしない（どちらもユーザー承認済み）。既定は全曜日終日（従来どおり）。
+- **確認は`adb shell dumpsys window windows | grep -c KEEP_SCREEN_ON`（0/1）で機械的にできる。** 端末時刻を飛ばすと、飛ばす前に予約した毎分タイマーが
+  :00からずれて発火するため、切り替わりが最大1分遅れて見える（通常運用では起きない）。

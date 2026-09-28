@@ -52,7 +52,7 @@ applicationId は `com.nadaryu.wall_jarvis`）。
 
 ## 実装方針
 **Flutterの標準的な構成で実装する方針。** 状態管理はRiverpod。バックグラウンド定期更新は
-`flutter_workmanager`、画面常時点灯は`wakelock_plus`、ローカルキャッシュは`Hive`（または`sqflite`）を使う
+`flutter_workmanager`、画面常時点灯は`wakelock_plus`（設定した時間帯だけ点灯）、ローカルキャッシュは`Hive`（または`sqflite`）を使う
 （仕様書「技術スタック・アーキテクチャ」節のとおり）。
 
 キオスク運用（Android Lock Task Mode、スリープ無効化）はAndroidネイティブ設定が絡むため、
