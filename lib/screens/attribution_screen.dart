@@ -47,12 +47,27 @@ class AttributionScreen extends ConsumerWidget {
             usages: [
               '雨雲レーダーの背景地図（淡色地図）',
               '雨雲レーダーの海岸線・都道府県境（白地図）',
+              '地震情報の日本地図（淡色地図・白地図）',
             ],
             notes: [
               '地理院タイルを加工して作成（ダークテーマに合わせて色を反転・減光、'
                   '白地図は線だけを明るい灰色にして重ね合わせ）。',
             ],
             links: ['https://maps.gsi.go.jp/development/ichiran.html'],
+          ),
+          const _Section(
+            title: 'P2P地震情報',
+            credit: 'P2P地震情報 JSON API v2（気象庁の地震情報を配信）',
+            usages: ['地震情報（震源・マグニチュード・最大震度・各地の震度・津波の有無）'],
+            notes: [
+              '商用・非商用を問わず無償で利用できるAPIです（二次利用の条件に従い、'
+                  '元の情報が気象庁の地震情報であることを表示しています）。',
+              '情報の正確性は保証されません。防災の判断には気象庁などの公式の発表を確認してください。',
+            ],
+            links: [
+              'https://www.p2pquake.net/develop/json_api_v2/',
+              'https://www.p2pquake.net/secondary_use/',
+            ],
           ),
           const _Section(
             title: 'Open-Meteo',

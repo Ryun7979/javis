@@ -20,7 +20,10 @@ import 'article_viewer.dart';
 /// 設定の間隔（既定3分、毎時0分を起点にした区切り）ごとに表示中の一覧を1ページ送り、最後まで送ったら
 /// 先頭に戻る。「総合」は戻るたびに新着順⇔注目度順（はてなブックマーク数）を切り替える。
 class NewsFeed extends ConsumerStatefulWidget {
-  const NewsFeed({super.key});
+  const NewsFeed({super.key, this.headerTrailing});
+
+  /// ヘッダー右端に置くウィジェット（地震情報への切り替えボタン）。
+  final Widget? headerTrailing;
 
   @override
   ConsumerState<NewsFeed> createState() => _NewsFeedState();
@@ -230,6 +233,7 @@ class _NewsFeedState extends ConsumerState<NewsFeed>
                   MaterialPageRoute(builder: (_) => const SettingsScreen()),
                 ),
               ),
+              ?widget.headerTrailing,
             ],
           ),
         ),

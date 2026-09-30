@@ -10,13 +10,12 @@ import '../widgets/clock_widget.dart';
 import '../widgets/cyberpunk_background.dart';
 import '../widgets/fishing_radar_panel.dart';
 import '../widgets/neon_pulse_frame.dart';
-import '../widgets/news_feed.dart';
-import '../widgets/update_flash_overlay.dart';
+import '../widgets/news_quake_panel.dart';
 import '../widgets/wiki_trivia_ticker.dart';
 
 /// 卓上ダッシュボードのメイン画面。
 /// 左カラム: 大型時計（上、直下にWikipediaの小ネタを1行、背景はグリッドとNASAの宇宙写真を定期的に切り替え）＋釣り情報カード/雨雲レーダー（下、コンパクト、定期的に切り替え）を縦積み。
-/// 右カラム: ニュースフィードを画面の半分ほど使い、大きく表示する。
+/// 右カラム: ニュースフィードを画面の半分ほど使い、大きく表示する。地震発生時は地震情報に切り替わる。
 ///
 /// 設定ボタンはニュースフィードのヘッダー（更新ボタンの隣）に置く。
 /// 以前は画面全体に対して右上固定（Positioned）で重ねていたが、ニュースフィード
@@ -85,12 +84,10 @@ class DashboardScreen extends ConsumerWidget {
               ),
               Expanded(
                 flex: 5,
-                child: NeonPulseFrame(
+                // ニュースフィード。震度3以上の地震を検出すると地震情報に切り替わる（手動でも切り替え可）。
+                child: const NeonPulseFrame(
                   color: CyberpunkColors.neonMagenta,
-                  child: UpdateFlashOverlay(
-                    updateKey: state.newsLastUpdated,
-                    child: const NewsFeed(),
-                  ),
+                  child: NewsQuakePanel(),
                 ),
               ),
             ],

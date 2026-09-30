@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../services/cache_service.dart';
+import '../services/earthquake_service.dart';
 import '../services/fishing_score_service.dart';
 import '../services/nasa_apod_service.dart';
 import '../services/news_service.dart';
@@ -36,6 +37,10 @@ final fishingScoreServiceProvider = Provider<FishingScoreService>(
 
 final wikipediaServiceProvider = Provider<WikipediaService>(
   (ref) => WikipediaService(ref.watch(cacheServiceProvider)),
+);
+
+final earthquakeServiceProvider = Provider<EarthquakeService>(
+  (ref) => EarthquakeService(),
 );
 
 final nasaApodServiceProvider = Provider<NasaApodService>(
