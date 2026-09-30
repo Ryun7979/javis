@@ -44,6 +44,13 @@ class _EarthquakePanelState extends ConsumerState<EarthquakePanel> {
   /// 一覧で選んだ地震。nullなら最新の地震を表示する。
   String? _selectedKey;
 
+  /// この時間内に起きた地震は、選んでいなくても×印と同心円を描く（それより前は小さな点）。
+  static const _recentWindow = Duration(hours: 24);
+
+  /// 地震情報は毎分取り直して再描画されるので、判定の「今」はその時点でよい。
+  bool _isRecent(Earthquake q) =>
+      DateTime.now().toUtc().difference(q.timeUtc) <= _recentWindow;
+
   @override
   Widget build(BuildContext context) {
     // 自動で切り替わったときは、選んでいた地震をやめて最新の地震を表示する。
@@ -102,9 +109,19 @@ class _EarthquakePanelState extends ConsumerState<EarthquakePanel> {
                   children: [
                     _QuakeMap(
                       selected: selected,
-                      others: [
+                      recent: [
+                        for (final q in felt)
+                          if (q.key != selected?.key &&
+                              q.hasHypocenter &&
+                              _isRecent(q))
+                            q,
+                      ],
+                      older: [
                         for (final q in felt.take(20))
-                          if (q.key != selected?.key && q.hasHypocenter) q,
+                          if (q.key != selected?.key &&
+                              q.hasHypocenter &&
+                              !_isRecent(q))
+                            q,
                       ],
                     ),
                     if (selected != null)
@@ -334,12 +351,19 @@ class _QuakeList extends StatelessWidget {
 
 /// 日本全体の地図（地理院タイル）＋震源・同心円・都道府県ごとの震度。
 class _QuakeMap extends StatelessWidget {
-  const _QuakeMap({required this.selected, required this.others});
+  const _QuakeMap({
+    required this.selected,
+    required this.recent,
+    required this.older,
+  });
 
   final Earthquake? selected;
 
-  /// 過去の地震（小さな点で表示）。
-  final List<Earthquake> others;
+  /// 選んでいない直近の地震（×印と同心円を少し控えめに表示）。
+  final List<Earthquake> recent;
+
+  /// それより前の地震（小さな点で表示）。
+  final List<Earthquake> older;
 
   static const _tileSize = 256.0;
   static const _minTileZoom = 5;
@@ -373,11 +397,13 @@ class _QuakeMap extends StatelessWidget {
         final size = constraints.biggest;
         final q = selected;
         var south = _south, north = _north, west = _west, east = _east;
-        if (q != null && q.hasHypocenter) {
-          south = math.min(south, q.latitude! - 1);
-          north = math.max(north, q.latitude! + 1);
-          west = math.min(west, q.longitude! - 1);
-          east = math.max(east, q.longitude! + 1);
+        // ×印を描く地震（選んだ地震と直近の地震）が、すべて端で切れずに収まるよう広げる。
+        for (final m in [?q, ...recent]) {
+          if (!m.hasHypocenter) continue;
+          south = math.min(south, m.latitude! - 1);
+          north = math.max(north, m.latitude! + 1);
+          west = math.min(west, m.longitude! - 1);
+          east = math.max(east, m.longitude! + 1);
         }
         final z = WebMercator.fitZoom(
           south: south,
@@ -476,11 +502,25 @@ class _QuakeMap extends StatelessWidget {
                 child: Stack(children: tileLayer('blank')),
               ),
             ),
-            for (final o in others)
+            for (final o in older)
               _at(
                 toScreen(o.latitude!, o.longitude!),
                 8,
                 _Dot(color: seismicColor(o.maxScale).withValues(alpha: 0.55)),
+              ),
+            // 選んでいない直近の地震。同心円は選んだ地震より淡くし、×印も小さくする。
+            for (final o in recent)
+              _at(
+                toScreen(o.latitude!, o.longitude!),
+                size.shortestSide *
+                    QuakeRippleSpec.forScale(o.maxScale).maxRadiusRatio *
+                    2,
+                QuakeRipple(
+                  key: ValueKey('ripple-${o.key}-${o.maxScale}'),
+                  spec: QuakeRippleSpec.forScale(o.maxScale),
+                  color: seismicColor(o.maxScale).withValues(alpha: 0.55),
+                  phase: _phaseOf(o),
+                ),
               ),
             if (rippleCenter != null && rippleSpec != null)
               _at(
@@ -490,16 +530,30 @@ class _QuakeMap extends StatelessWidget {
                   key: ValueKey('ripple-${q!.key}-${q.maxScale}'),
                   spec: rippleSpec,
                   color: seismicColor(q.maxScale),
+                  phase: _phaseOf(q),
                 ),
               ),
             for (final (pos, s) in prefMarks)
               _at(pos, 18, _PrefScaleMark(scale: s)),
+            for (final o in recent)
+              _at(
+                toScreen(o.latitude!, o.longitude!),
+                20,
+                _EpicenterMark(color: seismicColor(o.maxScale)),
+              ),
             if (q != null && q.hasHypocenter)
               _at(
                 rippleCenter!,
                 30,
                 _EpicenterMark(color: seismicColor(q.maxScale)),
               ),
+            // 各マークの右上に、その地震の震度を小さく添える（ほかのマークより上に描く）。
+            for (final o in older)
+              _scaleTag(toScreen(o.latitude!, o.longitude!), 8, o.maxScale),
+            for (final o in recent)
+              _scaleTag(toScreen(o.latitude!, o.longitude!), 20, o.maxScale),
+            if (q != null && q.hasHypocenter)
+              _scaleTag(rippleCenter!, 30, q.maxScale, emphasized: true),
             if (q != null && !q.hasHypocenter && rippleCenter != null)
               Positioned(
                 left: rippleCenter.dx + 12,
@@ -512,6 +566,42 @@ class _QuakeMap extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+
+  /// 同心円の広がり始めを地震ごとにずらし、重なっても一斉に点滅して見えないようにする。
+  static double _phaseOf(Earthquake q) => (q.key.hashCode % 1000) / 1000;
+
+  /// マーク（中心[p]、大きさ[markSize]）の右上に置く、震度の小さな札。
+  Widget _scaleTag(
+    Offset p,
+    double markSize,
+    int scale, {
+    bool emphasized = false,
+  }) {
+    final color = seismicColor(scale);
+    return Positioned(
+      left: p.dx + markSize * 0.35,
+      top: p.dy - markSize * 0.35 - (emphasized ? 16 : 13),
+      child: IgnorePointer(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 3),
+          decoration: BoxDecoration(
+            color: CyberpunkColors.bgDeep.withValues(alpha: 0.75),
+            borderRadius: BorderRadius.circular(3),
+            border: Border.all(color: color.withValues(alpha: 0.8), width: 0.8),
+          ),
+          child: Text(
+            SeismicScale.label(scale),
+            style: TextStyle(
+              fontSize: emphasized ? 12 : 9,
+              height: 1.2,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -614,10 +704,20 @@ class _EpicenterPainter extends CustomPainter {
 
 /// 震源から同心円が繰り返し広がる演出。大きさ・本数・速さは[QuakeRippleSpec]（震度で決まる）。
 class QuakeRipple extends StatefulWidget {
-  const QuakeRipple({super.key, required this.spec, required this.color});
+  const QuakeRipple({
+    super.key,
+    required this.spec,
+    required this.color,
+    this.phase = 0,
+  });
 
   final QuakeRippleSpec spec;
+
+  /// 円の色。不透明度を下げて渡すと全体が淡くなる。
   final Color color;
+
+  /// 広がり始めの位置（0〜1）。複数の震源の円が同時に広がらないようずらす。
+  final double phase;
 
   @override
   State<QuakeRipple> createState() => _QuakeRippleState();
@@ -628,6 +728,7 @@ class _QuakeRippleState extends State<QuakeRipple>
   late final AnimationController _controller = AnimationController(
     vsync: this,
     duration: widget.spec.period,
+    value: widget.phase,
   )..repeat();
 
   @override
@@ -668,7 +769,10 @@ class _RipplePainter extends CustomPainter {
       maxR * 0.25,
       Paint()
         ..shader = RadialGradient(
-          colors: [color.withValues(alpha: 0.35), color.withValues(alpha: 0)],
+          colors: [
+            color.withValues(alpha: color.a * 0.35),
+            color.withValues(alpha: 0),
+          ],
         ).createShader(Rect.fromCircle(center: c, radius: maxR * 0.25)),
     );
     for (var i = 0; i < rings; i++) {
@@ -682,7 +786,7 @@ class _RipplePainter extends CustomPainter {
         Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = 6
-          ..color = color.withValues(alpha: 0.35 * fade)
+          ..color = color.withValues(alpha: color.a * 0.35 * fade)
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5),
       );
       canvas.drawCircle(
@@ -691,7 +795,7 @@ class _RipplePainter extends CustomPainter {
         Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = 2
-          ..color = color.withValues(alpha: 0.9 * fade),
+          ..color = color.withValues(alpha: color.a * 0.9 * fade),
       );
     }
   }
