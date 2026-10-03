@@ -28,16 +28,20 @@ class AttributionScreen extends ConsumerWidget {
               '潮位表（満潮・干潮時刻と毎時潮位）',
               '高解像度降水ナウキャスト（雨雲レーダーの実況・予報）',
               '雷監視（雷ナウキャストの雷の観測位置）',
+              '台風情報（台風の実況・経路・進路予報、暴風域・強風域・暴風警戒域）',
             ],
             notes: [
               '雨雲レーダーは、気象庁の降水ナウキャスト画像と雷の観測位置を、'
                   '地理院タイルの地図上に重ね合わせて表示しています。',
+              '台風情報は、気象庁の発表した位置・予報円などを、地震情報と同じ地図上に'
+                  '描き直して表示しています。防災の判断には気象庁の発表を確認してください。',
               '気象庁ホームページのコンテンツは「政府標準利用規約（第2.0版）」に準拠して'
                   '利用しています。',
             ],
             links: [
               'https://www.jma.go.jp/jma/kishou/info/coment.html',
               'https://www.jma.go.jp/bosai/nowc/',
+              'https://www.jma.go.jp/bosai/typhoon/',
               'https://www.data.jma.go.jp/kaiyou/db/tide/suisan/',
             ],
           ),
@@ -47,7 +51,7 @@ class AttributionScreen extends ConsumerWidget {
             usages: [
               '雨雲レーダーの背景地図（淡色地図）',
               '雨雲レーダーの海岸線・都道府県境（白地図）',
-              '地震情報の日本地図（淡色地図・白地図）',
+              '地震・台風情報の日本地図（淡色地図・白地図）',
             ],
             notes: [
               '地理院タイルを加工して作成（ダークテーマに合わせて色を反転・減光、'

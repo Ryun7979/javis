@@ -6,15 +6,7 @@
 ## Patterns That Work 効いたこと
 <!-- 安く確実に目的を達した手順や調べ方。「次も同じ状況でそのまま使えるか」が基準 -->
 
-- **Flutter SDKは`git clone -b stable --depth 1`で導入すると軽くて確実。** ZIP版の正確なバージョン番号URLを
-  毎回調べる必要がなく、`C:\src\flutter`に置けばそのまま`flutter --version`が初回セットアップまで完結する。
-- **Android cmdline-toolsのライセンス同意は`yes | sdkmanager --licenses`で非対話に通せる。**
-  `sdkmanager`本体のパッケージインストールコマンドも同様に`yes | sdkmanager ...`で通る
-  （対話プロンプト`Accept? (y/N)`にYが自動応答される）。
-- **JDKは公式インストーラ（winget/MSI）ではなくAdoptiumのポータブルZIP配布を使うと管理者権限なしで導入できる。**
-  `https://api.adoptium.net/v3/binary/latest/<version>/ga/windows/x64/jdk/hotspot/normal/eclipse`
-  をcurlで取得しZip展開するだけで動く（`C:\src\jdk17`）。`JAVA_HOME`をユーザー環境変数に設定すれば
-  `flutter doctor`が正しく検出する。
+- 開発環境を最初に作ったときの手順（Flutter SDK・sdkmanager・JDKの入れ方）は `docs/2026-10-04-開発環境の構築記録.md` に切り出した。
 - **外部APIの固定長テキスト形式は、WebFetchの要約結果を信用せず`curl`で生データを取得し`cut -c`で
   桁位置を実測してから実装する。** 気象庁の潮位表テキスト（`data.jma.go.jp/kaiyou/data/db/tide/suisan/txt/`）
   はWebFetchの要約だと空白の桁数が崩れて誤読した（年が4桁に見えるなど）。生バイトを`cat -A`や`cut -c`で
@@ -89,12 +81,8 @@
 ## Mistakes to Avoid 失敗と再発防止
 <!-- 実際に踏んだ失敗と、次回の回避手順。重大なものは【重大】を先頭に付ける -->
 
-- **【重大】`winget install`でJDK（MSI版）を入れようとすると、非対話セッションではUACの昇格待ちで
-  無期限にハングする。** `msiexec`が管理者権限を要求し、承認できる人間がいないため止まったまま進まない
-  （`Get-Process`で見ると`msiexec`のプロパティが読めなくなり、別ユーザーコンテキストに昇格している状態が
-  確認できた）。**次回の回避策**: Windowsの非対話セッションで開発ツールを入れるときは、最初から
-  管理者権限が要らないポータブルZIP/tar配布を探す。winget/MSIをどうしても使う場合は、数分で進捗が
-  無ければプロセスを`Stop-Process -Force`で切って別手段に切り替える判断を早めにする。
+- 【重大】`winget install`（MSI）は非対話セッションでUACの昇格待ちになり無期限に止まる。ポータブルZIP配布を使う
+  （詳細は `docs/2026-10-04-開発環境の構築記録.md`）。
 
 ## Domain Knowledge 業務・仕事の事実
 <!-- 調べて確定した仕様・振る舞い・制約。次回は調べ直さず前提にできるもの -->
@@ -105,11 +93,6 @@
   （ポータブルZIP）／Android SDK `%LOCALAPPDATA%\Android\sdk`（platform 37.1, build-tools 37.0.0,
   platform-tools, cmdline-tools;latest、ライセンス承諾済み）。PATH・`ANDROID_HOME`・`ANDROID_SDK_ROOT`・
   `JAVA_HOME`はユーザー環境変数に設定済み（新しいシェルなら自動で読める。既存のシェルでは手動export要）。
-- **`flutter create --org com.nadaryu --project-name wall_jarvis .`でリポジトリ直下に雛形を作成済み。**
-  パッケージ名は当初`fishing_dashboard`という仮称で作ったが、ユーザー指定により`wall_jarvis`へ変更
-  （applicationId: `com.nadaryu.wall_jarvis`）。名前変更は生成物を全削除してから`flutter create`を
-  再実行する方式で対応した（コミット前だったので安全に一括作り直しができた）。
-  `flutter analyze`・`flutter test`とも初期状態でPASS。
 - **釣り・ニュース・時計ダッシュボード本体を実装済み（2026-09-23）。** 潮汐は気象庁の潮位表テキスト
   （観測地点コードは横浜=`QS`。似た名前の`YK`=京浜港は別地点なので混同注意、
   `lib/data/observation_points.dart`に地点一覧）、天気はOpen-Meteo（APIキー不要）、ニュースはRSS
@@ -341,3 +324,19 @@
 - `Icons.earthquake`はこのFlutterに無い（`Icons.sensors`を使用）。切り替えるとNewsFeedは作り直され、タブ・スクロール位置は先頭に戻る。
 - **地図の×印と同心円は、選んだ地震だけでなく直近24時間の地震すべてに同時に描く**（ユーザー指定、2026-09-30）。選んでいない地震は×印を小さく・円を淡くし、
   円の広がり始めを地震ごとにずらす。地図の範囲はそれらの震源がすべて収まるよう広げる。24時間より前は小さな点。同じ場所で繰り返した地震は重なって1つに見える。
+
+## 台風情報（地震の地図に重ねて表示、2026-10-03）
+
+- **データは気象庁ホームページの台風情報（`jma.go.jp/bosai/typhoon/data/`、キー不要・非公式）。** `targetTc.json`が発表中の一覧、
+  `{id}/specifications.json`が実況と予報の数値（気圧・風速・大きさ・強さ）、`{id}/forecast.json`が図形（経路`track`、予報円`probabilityCircle`、
+  強風域`galeWarningArea`=中心と半径、暴風域・暴風警戒域`stormWarningArea`=円弧`arc`と線分`line`）。半径はメートル、円弧の角度は北を0として時計回り。
+  暴風警戒域は後の予報ほど手前の分を含むので最後の予報のものを使う。`targetTimes.json`は無い（404）。実データの見本は`test/fixtures/`。
+- **切り替えは「日本付近の台風」だけ**（ユーザー指定）。現在位置か予報円（半径ぶん近く見積もる）が、県庁所在地か主な離島から500km以内に入る台風
+  （`Typhoon.approachesJapan`）。熱帯低気圧と遠い台風は地図に描くだけ。間隔は`AppSettings.typhoonSwitchIntervalMinutes`（既定10分、0=しない）で、
+  毎時0分起点の区切りごとにニュース⇔地図を交互に出す。地震で切り替えた30分間は地震を優先し、地図も台風に合わせて広げず
+  地震だけのときの縮尺にする（`EarthquakePanel.quakeFocus`、ユーザー指定）。`--dart-define=TYPHOON_TEST=true`で遠い台風・熱帯低気圧も対象にできる。
+- **`ColorFiltered`は中身が透明な場所にもかかる。** 白地図の線を明るくするフィルター（アルファを作り直す行列）は、タイルの無い場所を灰色に塗ってしまった
+  （地図を東経157.5度より東へ広げて発覚）。フィルターの中に下地（白地図は白、淡色地図は海の色`#BED2FF`）を敷いて解消した。
+- **エミュレータを強制終了すると、次の起動がクラッシュ報告の同意ダイアログで止まる**（adbに現れず、ログに`Showing crashdialog`）。
+  `emulator -avd wall_jarvis_tablet -no-window`で起動すれば止まらず、`screencap`も使える。
+- **設定を読むウィジェットのテストは、`settingsProvider`を直接読まず小さなProvider（例: `typhoonSwitchIntervalProvider`）を挟むと、Hiveなしで差し替えられる。**

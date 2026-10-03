@@ -6,7 +6,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:wall_jarvis/models/earthquake.dart';
 import 'package:wall_jarvis/providers/core_providers.dart';
 import 'package:wall_jarvis/providers/earthquake_controller.dart';
+import 'package:wall_jarvis/models/typhoon.dart';
+import 'package:wall_jarvis/providers/typhoon_controller.dart';
 import 'package:wall_jarvis/services/earthquake_service.dart';
+import 'package:wall_jarvis/services/typhoon_service.dart';
 import 'package:wall_jarvis/widgets/news_quake_panel.dart';
 
 /// 実データ（2026-09-29 04:45 茨城県南部、最大震度4）と同じ形の発表。新しい順。
@@ -238,7 +241,11 @@ void main() {
     testWidgets('地震で自動的に切り替わり、30分後にニュースへ戻る', (tester) async {
       final service = _FakeService(const []);
       final container = ProviderContainer(
-        overrides: [earthquakeServiceProvider.overrideWithValue(service)],
+        overrides: [
+          earthquakeServiceProvider.overrideWithValue(service),
+          typhoonServiceProvider.overrideWithValue(_NoTyphoonService()),
+          typhoonSwitchIntervalProvider.overrideWithValue(10),
+        ],
       );
       await tester.pumpWidget(
         UncontrolledProviderScope(
@@ -257,7 +264,7 @@ void main() {
       expect(find.text('NEWS'), findsOneWidget);
 
       // 手動で切り替え・戻す。
-      await tester.tap(find.byTooltip('地震情報に切り替え'));
+      await tester.tap(find.byTooltip('地震・台風情報に切り替え'));
       await tester.pumpAndSettle();
       expect(find.text('QUAKE'), findsOneWidget);
       await tester.tap(find.byTooltip('ニュースに切り替え'));
@@ -300,4 +307,8 @@ class _FakeService extends EarthquakeService {
 
   @override
   Future<List<dynamic>> fetchLatest() async => reports;
+}
+class _NoTyphoonService extends TyphoonService {
+  @override
+  Future<List<Typhoon>> fetchAll() async => const [];
 }

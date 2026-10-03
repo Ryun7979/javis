@@ -7,6 +7,7 @@ import '../services/nasa_apod_service.dart';
 import '../services/news_service.dart';
 import '../services/rain_radar_service.dart';
 import '../services/tide_service.dart';
+import '../services/typhoon_service.dart';
 import '../services/weather_service.dart';
 import '../services/wikipedia_service.dart';
 
@@ -45,4 +46,8 @@ final earthquakeServiceProvider = Provider<EarthquakeService>(
 
 final nasaApodServiceProvider = Provider<NasaApodService>(
   (ref) => NasaApodService(ref.watch(cacheServiceProvider)),
+);
+
+final typhoonServiceProvider = Provider<TyphoonService>(
+  (ref) => TyphoonService(),
 );

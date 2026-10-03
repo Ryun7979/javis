@@ -18,6 +18,7 @@ class AppSettings {
     required this.articleAutoCloseMinutes,
     required this.panelSwitchIntervalMinutes,
     required this.newsPageScrollMinutes,
+    required this.typhoonSwitchIntervalMinutes,
     required this.apodSwitchIntervalMinutes,
     required this.apodBackgroundOpacity,
     required this.apodFullscreenAutoCloseMinutes,
@@ -63,6 +64,11 @@ class AppSettings {
 
   static const defaultNewsPageScrollMinutes = 3;
 
+  /// 日本付近に台風がある間、ニュースと地震・台風の地図を切り替える間隔（分）。0 のときは切り替えない。
+  final int typhoonSwitchIntervalMinutes;
+
+  static const defaultTyphoonSwitchIntervalMinutes = 10;
+
   /// 時計の背景を「グリッド⇔NASAの宇宙写真」で切り替える間隔（分）。0 のときは切り替えずグリッドのまま。
   final int apodSwitchIntervalMinutes;
 
@@ -98,6 +104,7 @@ class AppSettings {
         articleAutoCloseMinutes: defaultArticleAutoCloseMinutes,
         panelSwitchIntervalMinutes: defaultPanelSwitchIntervalMinutes,
         newsPageScrollMinutes: defaultNewsPageScrollMinutes,
+        typhoonSwitchIntervalMinutes: defaultTyphoonSwitchIntervalMinutes,
         apodSwitchIntervalMinutes: defaultApodSwitchIntervalMinutes,
         apodBackgroundOpacity: defaultApodBackgroundOpacity,
         apodFullscreenAutoCloseMinutes: defaultApodFullscreenAutoCloseMinutes,
@@ -117,6 +124,7 @@ class AppSettings {
     int? articleAutoCloseMinutes,
     int? panelSwitchIntervalMinutes,
     int? newsPageScrollMinutes,
+    int? typhoonSwitchIntervalMinutes,
     int? apodSwitchIntervalMinutes,
     double? apodBackgroundOpacity,
     int? apodFullscreenAutoCloseMinutes,
@@ -140,6 +148,8 @@ class AppSettings {
             panelSwitchIntervalMinutes ?? this.panelSwitchIntervalMinutes,
         newsPageScrollMinutes:
             newsPageScrollMinutes ?? this.newsPageScrollMinutes,
+        typhoonSwitchIntervalMinutes:
+            typhoonSwitchIntervalMinutes ?? this.typhoonSwitchIntervalMinutes,
         apodSwitchIntervalMinutes:
             apodSwitchIntervalMinutes ?? this.apodSwitchIntervalMinutes,
         apodBackgroundOpacity:
@@ -164,6 +174,7 @@ class AppSettings {
         'articleAutoCloseMinutes': articleAutoCloseMinutes,
         'panelSwitchIntervalMinutes': panelSwitchIntervalMinutes,
         'newsPageScrollMinutes': newsPageScrollMinutes,
+        'typhoonSwitchIntervalMinutes': typhoonSwitchIntervalMinutes,
         'apodSwitchIntervalMinutes': apodSwitchIntervalMinutes,
         'apodBackgroundOpacity': apodBackgroundOpacity,
         'apodFullscreenAutoCloseMinutes': apodFullscreenAutoCloseMinutes,
@@ -205,6 +216,10 @@ class AppSettings {
         // ニュースの自動ページ送りの追加前に保存された設定では既定値を使う。
         newsPageScrollMinutes: json['newsPageScrollMinutes'] as int? ??
             defaultNewsPageScrollMinutes,
+        // 台風情報の追加前に保存された設定では既定値を使う。
+        typhoonSwitchIntervalMinutes:
+            json['typhoonSwitchIntervalMinutes'] as int? ??
+                defaultTyphoonSwitchIntervalMinutes,
         // NASAの宇宙写真の追加前に保存された設定では既定値を使う。
         apodSwitchIntervalMinutes: json['apodSwitchIntervalMinutes'] as int? ??
             defaultApodSwitchIntervalMinutes,

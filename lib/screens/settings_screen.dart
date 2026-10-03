@@ -85,6 +85,21 @@ class SettingsScreen extends ConsumerWidget {
               settings.copyWith(panelSwitchIntervalMinutes: v),
             ),
           ),
+          const SizedBox(height: 24),
+          Text('台風接近時のニュースと台風情報の切り替え間隔', style: Theme.of(context).textTheme.titleMedium),
+          _IntervalDropdown(
+            value: settings.typhoonSwitchIntervalMinutes,
+            options: const [5, 10, 15, 30, 0],
+            label: (m) => m == 0 ? '自動で切り替えない（ボタンのみ）' : '$m分ごと',
+            onChanged: (v) => notifier.update(
+              settings.copyWith(typhoonSwitchIntervalMinutes: v),
+            ),
+          ),
+          const Text(
+            '日本付近に台風がある間だけ、ニュースと地震・台風の地図を交互に表示します。'
+            '熱帯低気圧と日本から遠い台風は、地図に表示するだけで切り替えません。',
+            style: TextStyle(fontSize: 12, color: Colors.white54),
+          ),
           ListTile(
             contentPadding: EdgeInsets.zero,
             leading: const Icon(Icons.location_city),

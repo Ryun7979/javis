@@ -6,11 +6,15 @@ import 'package:intl/intl.dart';
 
 import '../data/prefectures.dart';
 import '../models/earthquake.dart';
+import '../models/typhoon.dart';
 import '../providers/earthquake_controller.dart';
 import '../providers/settings_provider.dart';
+import '../providers/typhoon_controller.dart';
 import '../theme/cyberpunk_colors.dart';
 import '../util/app_clock.dart';
+import '../util/geo.dart';
 import '../util/web_mercator.dart';
+import 'typhoon_map_layer.dart';
 
 /// 震度ごとの表示色（震度が上がるほど 青→緑→黄→橙→赤→マゼンタ→紫）。
 Color seismicColor(int scale) => switch (SeismicScale.level(scale)) {
@@ -30,11 +34,22 @@ Color seismicColor(int scale) => switch (SeismicScale.level(scale)) {
 /// 震源には×印を置き、震度が大きいほど遠くまで・多重に広がる同心円を繰り返し描く。
 /// 震源がまだ発表されていない（震度速報のみの）間は、最も揺れた都道府県の県庁所在地を中心に
 /// 同心円を出し「震源 調査中」と表示する。各都道府県の最大震度は県庁所在地の位置に色付きの点で示す。
+///
+/// 台風・熱帯低気圧が発表されている間は、同じ地図に経路・現在位置・予報円なども重ねる
+/// （地震の表示はそのまま残す）。
 class EarthquakePanel extends ConsumerStatefulWidget {
-  const EarthquakePanel({super.key, this.headerTrailing});
+  const EarthquakePanel({
+    super.key,
+    this.headerTrailing,
+    this.quakeFocus = false,
+  });
 
   /// ヘッダー右端に置くウィジェット（ニュースへの切り替えボタン）。
   final Widget? headerTrailing;
+
+  /// 地震を優先して表示するか（震度3以上の地震で自動的に切り替えた間）。
+  /// trueの間は、台風に合わせて地図を広げず、地震だけのときと同じ縮尺にする（台風は範囲内の分だけ描く）。
+  final bool quakeFocus;
 
   @override
   ConsumerState<EarthquakePanel> createState() => _EarthquakePanelState();
@@ -63,6 +78,14 @@ class _EarthquakePanelState extends ConsumerState<EarthquakePanel> {
       settingsProvider.select((s) => s.useFixedJst),
     );
     final felt = state.felt;
+    final typhoonState = ref.watch(typhoonControllerProvider);
+    // 日本付近の台風を先に並べる（概要の表示と、地図の範囲を決めるのに使う）。
+    final approaching = typhoonState.approaching;
+    final typhoons = [
+      ...approaching,
+      for (final t in typhoonState.typhoons)
+        if (!approaching.contains(t)) t,
+    ];
     final selected = felt.isEmpty
         ? null
         : felt.firstWhere(
@@ -83,7 +106,7 @@ class _EarthquakePanelState extends ConsumerState<EarthquakePanel> {
               children: [
                 const Icon(Icons.sensors, size: 16, color: Colors.white70),
                 const SizedBox(width: 4),
-                Text('地震情報', style: Theme.of(context).textTheme.titleSmall),
+                Text('地震・台風情報', style: Theme.of(context).textTheme.titleSmall),
                 const SizedBox(width: 8),
                 if (lastUpdated != null)
                   Text(
@@ -95,8 +118,10 @@ class _EarthquakePanelState extends ConsumerState<EarthquakePanel> {
                   tooltip: '今すぐ確認',
                   iconSize: 18,
                   icon: const Icon(Icons.refresh),
-                  onPressed: () =>
-                      ref.read(earthquakeControllerProvider.notifier).refresh(),
+                  onPressed: () {
+                    ref.read(earthquakeControllerProvider.notifier).refresh();
+                    ref.read(typhoonControllerProvider.notifier).refresh();
+                  },
                 ),
                 ?widget.headerTrailing,
               ],
@@ -123,7 +148,29 @@ class _EarthquakePanelState extends ConsumerState<EarthquakePanel> {
                               !_isRecent(q))
                             q,
                       ],
+                      typhoons: typhoons,
+                      focusTyphoons: widget.quakeFocus
+                          ? const []
+                          : approaching,
+                      useFixedJst: useFixedJst,
                     ),
+                    // 台風の概要は左下に置く（右側は台風の進路と、左上〜中央は日本の震源と重なりやすい）。
+                    if (typhoons.isNotEmpty)
+                      Positioned(
+                        left: 8,
+                        bottom: 8,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          spacing: 6,
+                          children: [
+                            for (final t in typhoons.take(2))
+                              TyphoonInfoBox(
+                                typhoon: t,
+                                useFixedJst: useFixedJst,
+                              ),
+                          ],
+                        ),
+                      ),
                     if (selected != null)
                       Positioned(
                         left: 8,
@@ -133,24 +180,29 @@ class _EarthquakePanelState extends ConsumerState<EarthquakePanel> {
                           useFixedJst: useFixedJst,
                         ),
                       )
-                    else
+                    else if (state.error != null)
                       Center(
-                        child: state.error != null
-                            ? Text(
-                                state.error!,
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.redAccent,
-                                ),
-                              )
-                            : const CircularProgressIndicator(),
-                      ),
-                    const Positioned(
+                        child: Text(
+                          state.error!,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.redAccent,
+                          ),
+                        ),
+                      )
+                    else if (lastUpdated == null)
+                      const Center(child: CircularProgressIndicator()),
+                    Positioned(
                       right: 6,
                       bottom: 4,
                       child: Text(
-                        '出典：P2P地震情報（気象庁の地震情報） / 地理院タイル',
-                        style: TextStyle(fontSize: 9, color: Colors.white60),
+                        typhoons.isEmpty
+                            ? '出典：P2P地震情報（気象庁の地震情報） / 地理院タイル'
+                            : '出典：P2P地震情報（気象庁の地震情報） / 気象庁（台風情報） / 地理院タイル',
+                        style: const TextStyle(
+                          fontSize: 9,
+                          color: Colors.white60,
+                        ),
                       ),
                     ),
                   ],
@@ -162,6 +214,7 @@ class _EarthquakePanelState extends ConsumerState<EarthquakePanel> {
               height: 132,
               child: _QuakeList(
                 quakes: felt,
+                typhoons: typhoons,
                 selectedKey: selected?.key,
                 useFixedJst: useFixedJst,
                 onSelect: (q) => setState(() => _selectedKey = q.key),
@@ -271,28 +324,39 @@ class _QuakeInfo extends StatelessWidget {
 }
 
 /// 最近の地震（震度1以上）の一覧。タップするとその地震を地図に表示する。
+/// 台風・熱帯低気圧が発表されている間は、その行を先頭に並べる。
 class _QuakeList extends StatelessWidget {
   const _QuakeList({
     required this.quakes,
+    required this.typhoons,
     required this.selectedKey,
     required this.useFixedJst,
     required this.onSelect,
   });
 
   final List<Earthquake> quakes;
+  final List<Typhoon> typhoons;
   final String? selectedKey;
   final bool useFixedJst;
   final ValueChanged<Earthquake> onSelect;
 
   @override
   Widget build(BuildContext context) {
-    if (quakes.isEmpty) return const SizedBox.shrink();
+    if (quakes.isEmpty && typhoons.isEmpty) return const SizedBox.shrink();
     final formatter = DateFormat('M/d HH:mm');
     return ListView.builder(
-      itemCount: quakes.length,
+      itemCount: typhoons.length + quakes.length,
       itemExtent: 26,
       itemBuilder: (context, i) {
-        final q = quakes[i];
+        if (i < typhoons.length) {
+          return _TyphoonRow(
+            typhoon: typhoons[i],
+            time: formatter.format(
+              appLocalize(typhoons[i].validTimeUtc, useFixedJst),
+            ),
+          );
+        }
+        final q = quakes[i - typhoons.length];
         final color = seismicColor(q.maxScale);
         final selected = q.key == selectedKey;
         return InkWell(
@@ -349,12 +413,82 @@ class _QuakeList extends StatelessWidget {
   }
 }
 
-/// 日本全体の地図（地理院タイル）＋震源・同心円・都道府県ごとの震度。
+/// 一覧の先頭に並べる台風の行（号数・実況の時刻・位置と勢力・気圧）。
+class _TyphoonRow extends StatelessWidget {
+  const _TyphoonRow({required this.typhoon, required this.time});
+
+  final Typhoon typhoon;
+  final String time;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = typhoon;
+    final color = t.isTyphoon ? CyberpunkColors.neonAmber : Colors.white70;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            alignment: Alignment.center,
+            padding: const EdgeInsets.symmetric(vertical: 1, horizontal: 1),
+            decoration: BoxDecoration(
+              border: Border.all(color: color.withValues(alpha: 0.8)),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                t.isTyphoon ? t.label : '熱低',
+                style: TextStyle(fontSize: 11, color: color),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 78,
+            child: Text(
+              time,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Colors.white70,
+                fontFeatures: [FontFeature.tabularFigures()],
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              [
+                ?t.name,
+                ?t.location,
+                [?t.scale, ?t.intensity].join('・'),
+                [?t.course, ?t.speed].join(' '),
+              ].where((s) => s.isNotEmpty).join('  '),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 12),
+            ),
+          ),
+          if (t.pressureHpa != null)
+            Text(
+              '${t.pressureHpa}hPa',
+              style: const TextStyle(fontSize: 12, color: Colors.white70),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 日本全体の地図（地理院タイル）＋震源・同心円・都道府県ごとの震度＋台風。
 class _QuakeMap extends StatelessWidget {
   const _QuakeMap({
     required this.selected,
     required this.recent,
     required this.older,
+    required this.typhoons,
+    required this.focusTyphoons,
+    required this.useFixedJst,
   });
 
   final Earthquake? selected;
@@ -364,6 +498,19 @@ class _QuakeMap extends StatelessWidget {
 
   /// それより前の地震（小さな点で表示）。
   final List<Earthquake> older;
+
+  /// 地図に描く台風・熱帯低気圧。
+  final List<Typhoon> typhoons;
+
+  /// 地図の範囲に収める台風（日本付近の台風）。遠い台風まで収めると日本が小さくなりすぎる。
+  final List<Typhoon> focusTyphoons;
+  final bool useFixedJst;
+
+  /// 台風に合わせて地図を広げる限度。
+  static const _typhoonSouth = 8.0;
+  static const _typhoonNorth = 50.0;
+  static const _typhoonWest = 112.0;
+  static const _typhoonEast = 160.0;
 
   static const _tileSize = 256.0;
   static const _minTileZoom = 5;
@@ -381,6 +528,9 @@ class _QuakeMap extends StatelessWidget {
     0, 0, -0.50, 0, 140, //
     0, 0, 0, 1, 0, //
   ]);
+
+  /// 淡色地図の海の色（フィルターをかける前）。
+  static const _seaColor = Color(0xFFBED2FF);
 
   /// 白地図の線（海岸線・県境）だけを明るい灰色にする（雨雲レーダーと同じ）。
   static const _outlineFilter = ColorFilter.matrix([
@@ -404,6 +554,29 @@ class _QuakeMap extends StatelessWidget {
           north = math.max(north, m.latitude! + 1);
           west = math.min(west, m.longitude! - 1);
           east = math.max(east, m.longitude! + 1);
+        }
+        // 日本付近の台風は、現在位置と予報円の中心が収まるよう広げる（限度あり）。
+        for (final t in focusTyphoons) {
+          final points = [
+            t.center,
+            for (final f in t.forecasts) f.center,
+            // 強風域の円は端まで収める。
+            for (final c in t.galeArea.circles)
+              for (final bearing in const [0.0, 90.0, 180.0, 270.0])
+                destinationPoint(c.center, bearing, c.radiusM),
+          ];
+          for (final p in points) {
+            south = math.min(
+              south,
+              math.max(_typhoonSouth, p.latitude - 1.5),
+            );
+            north = math.max(
+              north,
+              math.min(_typhoonNorth, p.latitude + 1.5),
+            );
+            west = math.min(west, math.max(_typhoonWest, p.longitude - 1.5));
+            east = math.max(east, math.min(_typhoonEast, p.longitude + 1.5));
+          }
         }
         final z = WebMercator.fitZoom(
           south: south,
@@ -493,15 +666,38 @@ class _QuakeMap extends StatelessWidget {
             Positioned.fill(
               child: ColorFiltered(
                 colorFilter: _darkMapFilter,
-                child: Stack(children: tileLayer('pale')),
+                // 地理院タイルの無い範囲（東経157.5度より東など）は、海と同じ色で埋める。
+                child: Stack(
+                  children: [
+                    const Positioned.fill(child: ColoredBox(color: _seaColor)),
+                    ...tileLayer('pale'),
+                  ],
+                ),
               ),
             ),
             Positioned.fill(
               child: ColorFiltered(
                 colorFilter: _outlineFilter,
-                child: Stack(children: tileLayer('blank')),
+                // タイルの無い範囲がフィルターで灰色にならないよう、白（=透明になる）で埋める。
+                child: Stack(
+                  children: [
+                    const Positioned.fill(
+                      child: ColoredBox(color: Colors.white),
+                    ),
+                    ...tileLayer('blank'),
+                  ],
+                ),
               ),
             ),
+            // 台風は地震のマークより下に描く（震源や震度が隠れないように）。
+            if (typhoons.isNotEmpty)
+              Positioned.fill(
+                child: TyphoonMapLayer(
+                  typhoons: typhoons,
+                  project: toScreen,
+                  useFixedJst: useFixedJst,
+                ),
+              ),
             for (final o in older)
               _at(
                 toScreen(o.latitude!, o.longitude!),
