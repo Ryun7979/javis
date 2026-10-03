@@ -256,15 +256,18 @@ class _TyphoonPainter extends CustomPainter {
 }
 
 /// 地図の隅に重ねる、台風の概要（号数・名前・勢力・位置・進み方）。
+/// [compact]のときは1行（号数・強さ・気圧）だけにする。
 class TyphoonInfoBox extends StatelessWidget {
   const TyphoonInfoBox({
     super.key,
     required this.typhoon,
     required this.useFixedJst,
+    this.compact = false,
   });
 
   final Typhoon typhoon;
   final bool useFixedJst;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -278,6 +281,40 @@ class TyphoonInfoBox extends StatelessWidget {
     final wind = t.maxWindMs;
     final gust = t.maxGustMs;
     final next = t.forecasts.where((f) => f.advancedHours == 24).firstOrNull;
+
+    if (compact) {
+      return Container(
+        constraints: const BoxConstraints(maxWidth: 230),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: CyberpunkColors.bgDeep.withValues(alpha: 0.78),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: color.withValues(alpha: 0.7)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          spacing: 8,
+          children: [
+            Flexible(
+              child: Text(
+                t.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
+              ),
+            ),
+            if (t.intensity != null)
+              Text(t.intensity!, style: const TextStyle(fontSize: 12)),
+            if (t.pressureHpa != null)
+              Text('${t.pressureHpa}hPa', style: sub),
+          ],
+        ),
+      );
+    }
 
     return Container(
       constraints: const BoxConstraints(maxWidth: 230),

@@ -339,4 +339,7 @@
   （地図を東経157.5度より東へ広げて発覚）。フィルターの中に下地（白地図は白、淡色地図は海の色`#BED2FF`）を敷いて解消した。
 - **エミュレータを強制終了すると、次の起動がクラッシュ報告の同意ダイアログで止まる**（adbに現れず、ログに`Showing crashdialog`）。
   `emulator -avd wall_jarvis_tablet -no-window`で起動すれば止まらず、`screencap`も使える。
+- **地図に重ねる地震・台風の概要は、開いて8秒後に1行へたたむ（タップで開閉）**（2026-10-04、`AutoCollapseBox`。地図が隠れるというユーザー指摘）。
+  表示直後と、選んだ地震・自動切り替え（`alertSeq`）・台風の顔ぶれが変わったときに開き直す。毎分のデータ更新では開き直さない。
+  実機確認は`QUAKE_ALERT_TEST`+`TYPHOON_TEST`でビルドし、起動直後・15秒後・`input tap`後を`screencap`で撮る（起動に数秒かかるので8秒ちょうどでは撮れない）。
 - **設定を読むウィジェットのテストは、`settingsProvider`を直接読まず小さなProvider（例: `typhoonSwitchIntervalProvider`）を挟むと、Hiveなしで差し替えられる。**

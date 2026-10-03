@@ -14,6 +14,7 @@ import '../theme/cyberpunk_colors.dart';
 import '../util/app_clock.dart';
 import '../util/geo.dart';
 import '../util/web_mercator.dart';
+import 'auto_collapse_box.dart';
 import 'typhoon_map_layer.dart';
 
 /// 震度ごとの表示色（震度が上がるほど 青→緑→黄→橙→赤→マゼンタ→紫）。
@@ -159,25 +160,39 @@ class _EarthquakePanelState extends ConsumerState<EarthquakePanel> {
                       Positioned(
                         left: 8,
                         bottom: 8,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          spacing: 6,
-                          children: [
-                            for (final t in typhoons.take(2))
-                              TyphoonInfoBox(
-                                typhoon: t,
-                                useFixedJst: useFixedJst,
-                              ),
-                          ],
+                        // 地図が隠れないよう、数秒で1行にたたむ（タップで開閉）。
+                        child: AutoCollapseBox(
+                          alignment: Alignment.bottomLeft,
+                          resetKey: [
+                            for (final t in typhoons.take(2)) t.label,
+                          ].join(','),
+                          builder: (context, expanded) => Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            spacing: expanded ? 6 : 4,
+                            children: [
+                              for (final t in typhoons.take(2))
+                                TyphoonInfoBox(
+                                  typhoon: t,
+                                  useFixedJst: useFixedJst,
+                                  compact: !expanded,
+                                ),
+                            ],
+                          ),
                         ),
                       ),
                     if (selected != null)
                       Positioned(
                         left: 8,
                         top: 8,
-                        child: _QuakeInfo(
-                          quake: selected,
-                          useFixedJst: useFixedJst,
+                        child: AutoCollapseBox(
+                          // 自動で切り替わったときも開き直す。
+                          resetKey: '${selected.key}#${state.alertSeq}',
+                          builder: (context, expanded) => _QuakeInfo(
+                            quake: selected,
+                            useFixedJst: useFixedJst,
+                            compact: !expanded,
+                          ),
                         ),
                       )
                     else if (state.error != null)
@@ -228,11 +243,17 @@ class _EarthquakePanelState extends ConsumerState<EarthquakePanel> {
 }
 
 /// 左上に重ねる、選択中の地震の概要（最大震度を大きく）。
+/// [compact]のときは1行（震度・規模・震源・発生時刻）だけにする。
 class _QuakeInfo extends StatelessWidget {
-  const _QuakeInfo({required this.quake, required this.useFixedJst});
+  const _QuakeInfo({
+    required this.quake,
+    required this.useFixedJst,
+    this.compact = false,
+  });
 
   final Earthquake quake;
   final bool useFixedJst;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -242,6 +263,58 @@ class _QuakeInfo extends StatelessWidget {
     final depth = quake.depthKm;
     final mag = quake.magnitude;
     const sub = TextStyle(fontSize: 12, color: Colors.white70);
+
+    if (compact) {
+      return Container(
+        constraints: const BoxConstraints(maxWidth: 320),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: CyberpunkColors.bgDeep.withValues(alpha: 0.78),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: color.withValues(alpha: 0.7)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          spacing: 8,
+          children: [
+            Text(
+              '震度${SeismicScale.label(quake.maxScale)}',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+            if (mag != null)
+              Text(
+                'M${mag.toStringAsFixed(1)}',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            Flexible(
+              child: Text(
+                quake.hypocenterName ?? '震源 調査中',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 12),
+              ),
+            ),
+            Text(time, style: sub),
+            if (quake.tsunamiAlert)
+              const Text(
+                '津波',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: CyberpunkColors.neonRed,
+                ),
+              ),
+          ],
+        ),
+      );
+    }
 
     return Container(
       constraints: const BoxConstraints(maxWidth: 260),
