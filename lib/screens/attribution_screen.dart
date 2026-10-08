@@ -109,15 +109,16 @@ class AttributionScreen extends ConsumerWidget {
           const _Section(
             title: 'NASA',
             credit: 'Astronomy Picture of the Day（NASA）',
-            usages: ['時計の背景と全画面表示の宇宙写真（APOD API）'],
+            usages: ['時計の背景と全画面表示の宇宙写真（NASA Scienceのサイトの記事一覧）'],
             notes: [
+              '公開された正式なAPIではないため、予告なく取得できなくなる場合があります。',
               '著作者の記載がない写真はNASAによるもので、パブリックドメインです。',
               '著作者の記載がある写真の著作権は各著作者に帰属します。全画面表示の下端に'
                   '著作者名を表示しています。',
             ],
             links: [
-              'https://apod.nasa.gov/apod/lib/about_apod.html',
-              'https://api.nasa.gov/',
+              'https://science.nasa.gov/apod/',
+              'https://science.nasa.gov/apod/apod-about/',
             ],
           ),
           _Section(

@@ -1,0 +1,50 @@
+[
+  {
+    "date": "2026-10-08T00:05:00",
+    "title": {
+      "rendered": "APOD: 2026 October 8 &#8211; The Saturn System Smörgåsbord"
+    },
+    "_embedded": {
+      "wp:featuredmedia": [
+        {
+          "media_type": "image",
+          "mime_type": "image/png",
+          "source_url": "https://assets.science.nasa.gov/dynamicimage/assets/science/cds/apod/apod/2026/october/2026-09-21-2349_3-TW-RGB-Sat2_1.5x_Labelled.png",
+          "credits": "Tom Williams"
+        }
+      ]
+    }
+  },
+  {
+    "date": "2026-10-07T00:05:00",
+    "title": {
+      "rendered": "APOD: 2026 October 7 &#8211; Supernova Remnant Pa 30"
+    },
+    "_embedded": {
+      "wp:featuredmedia": [
+        {
+          "media_type": "image",
+          "mime_type": "image/jpeg",
+          "source_url": "https://assets.science.nasa.gov/dynamicimage/assets/science/cds/apod/apod/2026/october/noirlab2624a.jpg",
+          "credits": "International Gemini Observatory/NOIRLab/NSF/AURA Acknowledgment: PI: T. Cunningham (Center for Astrophysics — Harvard &amp; Smithsonian) Image Processing: J. Miller &amp; M. Rodriguez (International Gemini Observatory/NSF NOIRLab), T.A. Rector (University of Alaska Anchorage/NSF NOIRLab), D. de Martin &amp; M. Zamani (NSF NOIRLab)"
+        }
+      ]
+    }
+  },
+  {
+    "date": "2026-10-06T00:05:00",
+    "title": {
+      "rendered": "APOD: 2026 October 6 &#8211; A Complete Auroral Oval from SMILE"
+    },
+    "_embedded": {
+      "wp:featuredmedia": [
+        {
+          "media_type": "image",
+          "mime_type": "image/jpeg",
+          "source_url": "https://assets.science.nasa.gov/dynamicimage/assets/science/cds/apod/apod/2026/october/Smile_s_first_ultraviolet_footage_shows_auroral_substorm-1.jpeg",
+          "credits": "ESA, CAS, SMILE, UVI"
+        }
+      ]
+    }
+  }
+]

@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/legacy.dart';
 
 import '../models/apod.dart';
 import 'core_providers.dart';
-import 'settings_provider.dart';
 
 /// 時計の背景・全画面表示に使うNASAの宇宙写真（APOD）を保持する。null はまだ写真が無い状態。
 /// 起動時はキャッシュを即表示し、以後は定期的に最新を確認する（通信はサービス側のTTLで間引かれる）。
@@ -27,10 +26,9 @@ class ApodController extends StateNotifier<ApodImage?> {
     if (_loading) return;
     _loading = true;
     try {
-      final image = await _ref.read(nasaApodServiceProvider).fetchLatest(
-            apiKey: _ref.read(settingsProvider).nasaApiKey,
-            force: force,
-          );
+      final image = await _ref
+          .read(nasaApodServiceProvider)
+          .fetchLatest(force: force);
       if (!mounted || image == null) return;
       if (state?.date == image.date && state?.imageUrl == image.imageUrl) {
         return;
@@ -50,12 +48,6 @@ class ApodController extends StateNotifier<ApodImage?> {
   }
 }
 
-final apodProvider = StateNotifierProvider<ApodController, ApodImage?>((ref) {
-  final controller = ApodController(ref);
-  // APIキーを設定し直したら、すぐにそのキーで取り直す。
-  ref.listen(
-    settingsProvider.select((s) => s.nasaApiKey),
-    (_, _) => unawaited(controller.refresh(force: true)),
-  );
-  return controller;
-});
+final apodProvider = StateNotifierProvider<ApodController, ApodImage?>(
+  (ref) => ApodController(ref),
+);

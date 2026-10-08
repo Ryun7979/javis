@@ -142,23 +142,6 @@ class SettingsScreen extends ConsumerWidget {
               settings.copyWith(apodFullscreenAutoCloseMinutes: v),
             ),
           ),
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.key),
-            title: const Text('NASA APIキー（任意）'),
-            subtitle: Text(
-              settings.nasaApiKey.isEmpty
-                  ? '未設定（共用のDEMO_KEYを使用）'
-                  : '設定済み（末尾 ${_keyTail(settings.nasaApiKey)}）',
-            ),
-            trailing: const Icon(Icons.edit),
-            onTap: () async {
-              final key = await _showApiKeyDialog(context, settings.nasaApiKey);
-              if (key != null) {
-                notifier.update(settings.copyWith(nasaApiKey: key));
-              }
-            },
-          ),
           const SizedBox(height: 24),
           Text('ニュース記事を自動で閉じるまでの時間', style: Theme.of(context).textTheme.titleMedium),
           _IntervalDropdown(
@@ -280,46 +263,6 @@ class SettingsScreen extends ConsumerWidget {
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const AttributionScreen()),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  static String _keyTail(String key) =>
-      key.length <= 4 ? key : key.substring(key.length - 4);
-
-  /// APIキーの入力ダイアログ。空にして保存すると DEMO_KEY に戻る。キャンセル時は null。
-  Future<String?> _showApiKeyDialog(BuildContext context, String current) {
-    final controller = TextEditingController(text: current);
-    return showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('NASA APIキー'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'api.nasa.gov で無料発行できます。空欄なら共用のDEMO_KEYを使います。',
-              style: TextStyle(fontSize: 12, color: Colors.white54),
-            ),
-            TextField(
-              controller: controller,
-              autocorrect: false,
-              enableSuggestions: false,
-              decoration: const InputDecoration(labelText: 'APIキー'),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('キャンセル'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(controller.text.trim()),
-            child: const Text('保存'),
           ),
         ],
       ),

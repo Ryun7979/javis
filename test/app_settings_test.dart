@@ -54,25 +54,21 @@ void main() {
       apodSwitchIntervalMinutes: 0,
       apodBackgroundOpacity: 0.5,
       apodFullscreenAutoCloseMinutes: 3,
-      nasaApiKey: 'abc',
     );
     final restored = AppSettings.fromJson(settings.toJson());
     expect(restored.apodSwitchIntervalMinutes, 0);
     expect(restored.apodBackgroundOpacity, 0.5);
     expect(restored.apodFullscreenAutoCloseMinutes, 3);
-    expect(restored.nasaApiKey, 'abc');
   });
 
-  test('宇宙写真の設定を含まない古い保存データは既定値（15分・35%・10分・キー無し）で復元する', () {
+  test('宇宙写真の設定を含まない古い保存データは既定値（15分・35%・10分）で復元する', () {
     final json = AppSettings.defaults().toJson()
       ..remove('apodSwitchIntervalMinutes')
       ..remove('apodBackgroundOpacity')
-      ..remove('apodFullscreenAutoCloseMinutes')
-      ..remove('nasaApiKey');
+      ..remove('apodFullscreenAutoCloseMinutes');
     final restored = AppSettings.fromJson(json);
     expect(restored.apodSwitchIntervalMinutes, 15);
     expect(restored.apodBackgroundOpacity, 0.35);
     expect(restored.apodFullscreenAutoCloseMinutes, 10);
-    expect(restored.nasaApiKey, '');
   });
 }

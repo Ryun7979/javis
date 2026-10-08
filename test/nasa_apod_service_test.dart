@@ -5,62 +5,75 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:wall_jarvis/models/apod.dart';
 import 'package:wall_jarvis/services/cache_service.dart';
 import 'package:wall_jarvis/services/nasa_apod_service.dart';
 
-// 実際のAPIレスポンス（2026-09-27取得）を縮めたもの。
-const _image = {
-  'date': '2026-09-27',
-  'hdurl': 'https://apod.nasa.gov/apod/image/2609/M31Before_Scherer_4298.jpg',
-  'media_type': 'image',
-  'title': 'Andromeda before Photoshop',
-  'url': 'https://apod.nasa.gov/apod/image/2609/M31Before_Scherer_960.jpg',
-};
+// 実際のレスポンス（2026-10-09取得、新しい順に3件）から使う項目だけ残したもの。
+final String _fixture =
+    File('test/fixtures/apod_image_articles.json').readAsStringSync();
 
-const _video = {
-  'date': '2026-09-28',
-  'media_type': 'video',
-  'title': 'A Video Day',
-  'url': 'https://www.youtube.com/embed/xxxx',
-  'thumbnail_url': 'https://img.youtube.com/vi/xxxx/0.jpg',
-};
+List<dynamic> _articles() => jsonDecode(_fixture) as List<dynamic>;
+
+// 移転後に旧API（api.nasa.gov）が返していたロゴ。キャッシュに残っている端末がある。
+const _logo = ApodImage(
+  date: '2026-10-08',
+  title: 'NASA Science',
+  imageUrl:
+      'https://science.nasa.gov/wp-content/themes/nasa-child/assets/images/nasa-logo@2x.png',
+  hdImageUrl:
+      'https://science.nasa.gov/wp-content/themes/nasa-child/assets/images/nasa-logo@2x.png',
+);
+
+http.Response _json(Object body) => http.Response.bytes(
+      utf8.encode(jsonEncode(body)),
+      200,
+      headers: {'content-type': 'application/json; charset=UTF-8'},
+    );
 
 void main() {
   group('NasaApodService.parseResponse', () {
-    test('画像の日は通常版と高解像度版のURLを取り、著作者の無い日はnull', () {
-      final apod = NasaApodService.parseResponse(_image)!;
-      expect(apod.date, '2026-09-27');
-      expect(apod.title, 'Andromeda before Photoshop');
-      expect(apod.imageUrl, endsWith('_960.jpg'));
-      expect(apod.hdImageUrl, endsWith('_4298.jpg'));
-      expect(apod.copyright, isNull);
+    test('最新の記事から日付・題名・縮小版と原寸のURL・著作者を取る', () {
+      final apod = NasaApodService.parseResponse(_articles())!;
+      expect(apod.date, '2026-10-08');
+      expect(apod.title, 'The Saturn System Smörgåsbord');
+      expect(apod.hdImageUrl,
+          endsWith('/apod/apod/2026/october/2026-09-21-2349_3-TW-RGB-Sat2_1.5x_Labelled.png'));
+      expect(apod.imageUrl, '${apod.hdImageUrl}?w=1280');
+      expect(apod.copyright, 'Tom Williams');
     });
 
-    test('著作者名の改行・余分な空白を詰める', () {
-      final apod = NasaApodService.parseResponse(
-          {..._image, 'copyright': '\nGiuseppe  Petricca\n'})!;
-      expect(apod.copyright, 'Giuseppe Petricca');
+    test('著作者の実体参照を戻す', () {
+      final apod = NasaApodService.parseResponse(_articles().sublist(1))!;
+      expect(apod.title, 'Supernova Remnant Pa 30');
+      expect(apod.copyright, contains('Harvard & Smithsonian'));
+      expect(apod.copyright, isNot(contains('&amp;')));
     });
 
-    test('hdurl が無い日は通常版を全画面にも使う', () {
-      final apod =
-          NasaApodService.parseResponse({..._image}..remove('hdurl'))!;
-      expect(apod.hdImageUrl, apod.imageUrl);
+    test('著作者が空ならnull', () {
+      final articles = _articles();
+      articles[0]['_embedded']['wp:featuredmedia'][0]['credits'] = '';
+      expect(NasaApodService.parseResponse(articles)!.copyright, isNull);
     });
 
-    test('動画の日はサムネイルを使う', () {
-      final apod = NasaApodService.parseResponse(_video)!;
-      expect(apod.imageUrl, 'https://img.youtube.com/vi/xxxx/0.jpg');
-      expect(apod.hdImageUrl, apod.imageUrl);
+    test('写真の無い記事・APOD以外の記事・ロゴは飛ばして、次の記事を使う', () {
+      final articles = _articles();
+      // 1件目: 画像なし（動画の日など）
+      articles[0]['_embedded'] = <String, dynamic>{};
+      // 2件目: 検索に掛かったAPOD以外の記事
+      articles[1]['title']['rendered'] = 'Hubble Spots an Apod-like Galaxy';
+      final apod = NasaApodService.parseResponse(articles)!;
+      expect(apod.date, '2026-10-06');
+      expect(apod.title, 'A Complete Auroral Oval from SMILE');
+
+      articles[2]['_embedded']['wp:featuredmedia'][0]['source_url'] =
+          _logo.imageUrl;
+      expect(NasaApodService.parseResponse(articles), isNull);
     });
 
-    test('サムネイルの無い動画や、その他の種類は写真なし', () {
-      expect(
-          NasaApodService.parseResponse({..._video}..remove('thumbnail_url')),
-          isNull);
-      expect(
-          NasaApodService.parseResponse({'media_type': 'other', 'title': 'x'}),
-          isNull);
+    test('一覧でない応答は写真なし', () {
+      expect(NasaApodService.parseResponse({'code': 'rest_no_route'}), isNull);
+      expect(NasaApodService.parseResponse(const []), isNull);
     });
   });
 
@@ -91,58 +104,63 @@ void main() {
       );
     }
 
-    test('APIキー未設定ならDEMO_KEYで取得し、TTL内は通信せずキャッシュを返す', () async {
+    test('NASA Scienceの記事一覧を日付の新しい順で取得し、TTL内は通信せずキャッシュを返す', () async {
       final requests = <Uri>[];
-      final service =
-          serviceReturning([http.Response(jsonEncode(_image), 200)], requests);
+      final service = serviceReturning([_json(_articles())], requests);
 
-      final first = await service.fetchLatest(apiKey: '');
-      final second = await service.fetchLatest(apiKey: '');
+      final first = await service.fetchLatest();
+      final second = await service.fetchLatest();
 
-      expect(first!.date, '2026-09-27');
-      expect(second!.date, '2026-09-27');
+      expect(first!.date, '2026-10-08');
+      expect(second!.date, '2026-10-08');
       expect(requests, hasLength(1));
-      expect(requests.single.queryParameters['api_key'], 'DEMO_KEY');
-      expect(requests.single.queryParameters['thumbs'], 'true');
+      expect(requests.single.host, 'science.nasa.gov');
+      expect(requests.single.path, '/wp-json/wp/v2/image-article');
+      expect(requests.single.queryParameters['search'], 'apod');
+      expect(requests.single.queryParameters['orderby'], 'date');
+      expect(requests.single.queryParameters['order'], 'desc');
     });
 
-    test('APIキー設定時はそのキーを使う', () async {
-      final requests = <Uri>[];
-      final service =
-          serviceReturning([http.Response(jsonEncode(_image), 200)], requests);
-      await service.fetchLatest(apiKey: ' my-key ');
-      expect(requests.single.queryParameters['api_key'], 'my-key');
-    });
-
-    test('写真の無い日は前回の写真を使い続ける', () async {
+    test('写真のある記事が無ければ前回の写真を使い続ける', () async {
       final requests = <Uri>[];
       final service = serviceReturning([
-        http.Response(jsonEncode(_image), 200),
-        http.Response(
-            jsonEncode({..._video}..remove('thumbnail_url')), 200),
+        _json(_articles()),
+        _json(const []),
       ], requests);
 
-      await service.fetchLatest(apiKey: '');
-      final result = await service.fetchLatest(apiKey: '', force: true);
+      await service.fetchLatest();
+      final result = await service.fetchLatest(force: true);
 
       expect(requests, hasLength(2));
-      expect(result!.date, '2026-09-27');
-      expect(service.cached()!.date, '2026-09-27');
+      expect(result!.date, '2026-10-08');
+      expect(service.cached()!.date, '2026-10-08');
     });
 
     test('取得失敗は例外になり、キャッシュは残る', () async {
       final requests = <Uri>[];
       final service = serviceReturning([
-        http.Response(jsonEncode(_image), 200),
-        http.Response('rate limited', 429),
+        _json(_articles()),
+        http.Response('error', 500),
       ], requests);
 
-      await service.fetchLatest(apiKey: '');
+      await service.fetchLatest();
       await expectLater(
-        service.fetchLatest(apiKey: '', force: true),
+        service.fetchLatest(force: true),
         throwsA(isA<NasaApodServiceException>()),
       );
-      expect(service.cached()!.date, '2026-09-27');
+      expect(service.cached()!.date, '2026-10-08');
+    });
+
+    test('キャッシュに残った旧APIのロゴは捨て、TTL内でも取り直す', () async {
+      await CacheService.withBox(box).writeJson('nasa_apod', _logo.toJson());
+      final requests = <Uri>[];
+      final service = serviceReturning([_json(_articles())], requests);
+
+      expect(service.cached(), isNull);
+      final result = await service.fetchLatest();
+
+      expect(requests, hasLength(1));
+      expect(result!.title, 'The Saturn System Smörgåsbord');
     });
   });
 }

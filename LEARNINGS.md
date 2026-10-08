@@ -246,10 +246,16 @@
 
 ## NASA APOD（時計の背景・全画面表示、2026-09-27）
 
-- **APOD APIは日付指定なし＋`thumbs=true`で最新1件を取る。** `media_type`が`video`の日は`thumbnail_url`、
-  サムネイルも無い日（`other`等）は前回の写真を使い続ける（`NasaApodService.parseResponse`）。`DEMO_KEY`の
-  上限は実測で1時間10回（`X-Ratelimit-Limit`）なので、3時間TTLのHiveキャッシュ＋1時間ごとの確認にした。
-  `hdurl`は4000px超・数MBになるので、全画面は`ResizeImage(policy: fit)`で画面の実ピクセルに縮めてデコードする。
+- **【重大】APODは`apod.nasa.gov`から`science.nasa.gov/apod/`へ移転し、公式API（`api.nasa.gov/planetary/apod`）は
+  どの日付でも題名「NASA Science」＋サイトのロゴ画像を返すようになった（2026-10-09確認、HTTP 200・`media_type: image`なので
+  形式上は正常に見える）。** 取得元を移転先のWordPress REST API
+  （`science.nasa.gov/wp-json/wp/v2/image-article?search=apod&orderby=date&order=desc&_embed=wp:featuredmedia`、キー不要・非公式・
+  規約と回数制限は未確認でユーザー承認済み）に切り替え、APIキーの設定は削除した。題名が`APOD:`で始まり、画像が
+  `assets.science.nasa.gov`の`/apod/`配下の記事だけ採用する（`NasaApodService.isApodImageUrl`。キャッシュに残ったロゴもこれで捨てる）。
+  新しい順に5件取り、写真のある最初の記事を使う。背景用は`source_url`に`?w=1280`を付けた縮小版、全画面は原寸
+  （`ResizeImage(policy: fit)`で画面の実ピクセルに縮めてデコード）。確認は3時間TTLのHiveキャッシュ＋1時間ごと。実データの見本は`test/fixtures/apod_image_articles.json`。
+- **外部APIの応答は「形式が正しい」だけで採用せず、中身が目的のものかを許可条件で確かめる。** 上のロゴは`url`があるだけで採用して
+  前回の写真まで上書きした。画像なら配信元のホストとパスで絞る。
 - **`PageRouteBuilder`で直に出す画面は`Material`で包まないとTextが黄色の二重下線＋既定外フォントになる。**
   （全画面表示で踏んだ。Scaffoldを使わない画面では`ColoredBox`ではなく`Material(color: ...)`を使う）
 - 時計の背景は`ApodClockBackground`（間隔・不透明度・全画面の自動復帰時間・APIキーは設定画面）。
